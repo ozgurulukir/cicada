@@ -1,0 +1,9 @@
+# Cicada v0 Configuration
+
+repository:
+  # Path to your Elixir project to index
+  path: /Users/wende/projects/ab
+
+storage:
+  # Path to the generated index file
+  index_path: ./data/index.json

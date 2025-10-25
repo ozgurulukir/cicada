@@ -1,0 +1,152 @@
+"""
+Elixir Repository Indexer.
+
+Walks an Elixir repository and indexes all modules and functions.
+"""
+
+import argparse
+import json
+import os
+from datetime import datetime
+from pathlib import Path
+from parser import ElixirParser
+
+
+class ElixirIndexer:
+    """Indexes Elixir repositories to extract module and function information."""
+
+    def __init__(self):
+        """Initialize the indexer with a parser."""
+        self.parser = ElixirParser()
+        self.excluded_dirs = {'deps', '_build', 'node_modules', '.git', 'assets', 'priv'}
+
+    def index_repository(self, repo_path: str, output_path: str = 'data/index.json'):
+        """
+        Index an Elixir repository.
+
+        Args:
+            repo_path: Path to the Elixir repository root
+            output_path: Path where the index JSON file will be saved
+
+        Returns:
+            Dictionary containing the index data
+        """
+        repo_path = Path(repo_path).resolve()
+
+        if not repo_path.exists():
+            raise ValueError(f"Repository path does not exist: {repo_path}")
+
+        print(f"Indexing repository: {repo_path}")
+
+        # Find all Elixir files
+        elixir_files = self._find_elixir_files(repo_path)
+        total_files = len(elixir_files)
+
+        print(f"Found {total_files} Elixir files")
+
+        # Parse all files
+        all_modules = {}
+        total_functions = 0
+        files_processed = 0
+
+        for file_path in elixir_files:
+            try:
+                modules = self.parser.parse_file(str(file_path))
+
+                if modules:
+                    for module_data in modules:
+                        module_name = module_data['module']
+                        functions = module_data['functions']
+
+                        # Calculate stats
+                        public_count = sum(1 for f in functions if f['type'] == 'def')
+                        private_count = sum(1 for f in functions if f['type'] == 'defp')
+
+                        # Store module info
+                        all_modules[module_name] = {
+                            'file': str(file_path.relative_to(repo_path)),
+                            'line': module_data['line'],
+                            'functions': functions,
+                            'total_functions': len(functions),
+                            'public_functions': public_count,
+                            'private_functions': private_count
+                        }
+
+                        total_functions += len(functions)
+
+                files_processed += 1
+
+                # Progress reporting
+                if files_processed % 10 == 0:
+                    print(f"  Processed {files_processed}/{total_files} files...")
+
+            except Exception as e:
+                print(f"  Skipping {file_path}: {e}")
+                continue
+
+        # Build final index
+        index = {
+            'modules': all_modules,
+            'metadata': {
+                'indexed_at': datetime.now().isoformat(),
+                'total_modules': len(all_modules),
+                'total_functions': total_functions,
+                'repo_path': str(repo_path)
+            }
+        }
+
+        # Save to file
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(output_path, 'w') as f:
+            json.dump(index, f, indent=2)
+
+        print(f"\nIndexing complete!")
+        print(f"  Modules: {len(all_modules)}")
+        print(f"  Functions: {total_functions}")
+        print(f"\nIndex saved to: {output_path}")
+
+        return index
+
+    def _find_elixir_files(self, repo_path: Path) -> list:
+        """Find all Elixir source files in the repository."""
+        elixir_files = []
+
+        for root, dirs, files in os.walk(repo_path):
+            # Remove excluded directories from the search
+            dirs[:] = [d for d in dirs if d not in self.excluded_dirs]
+
+            # Find .ex and .exs files
+            for file in files:
+                if file.endswith(('.ex', '.exs')):
+                    file_path = Path(root) / file
+                    elixir_files.append(file_path)
+
+        return sorted(elixir_files)
+
+
+def main():
+    """Main entry point for the indexer CLI."""
+    parser = argparse.ArgumentParser(
+        description='Index an Elixir repository to extract modules and functions'
+    )
+    parser.add_argument(
+        '--repo',
+        required=True,
+        help='Path to the Elixir repository to index'
+    )
+    parser.add_argument(
+        '--output',
+        default='data/index.json',
+        help='Output path for the index file (default: data/index.json)'
+    )
+
+    args = parser.parse_args()
+
+    indexer = ElixirIndexer()
+    indexer.index_repository(args.repo, args.output)
+
+
+if __name__ == '__main__':
+    main()
