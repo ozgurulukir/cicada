@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "cicada": {
+      "command": "python",
+      "args": [
+        "/Users/wende/projects/cicada/mcp_server.py"
+      ],
+      "cwd": "/Users/wende/projects/cicada"
+    }
+  }
+}
