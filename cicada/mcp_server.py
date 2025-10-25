@@ -1095,11 +1095,11 @@ class CicadaServer:
                 network_result = pr_finder_network.find_pr_for_line(file_path, line_number)
 
                 if network_result.get("pr") is not None:
-                    # PR exists but not in index - suggest incremental update
+                    # PR exists but not in index - suggest update
                     error_msg = (
                         "PR index is incomplete. Please run:\n"
-                        "  cicada-index-pr --incremental\n\n"
-                        "This will update the index with recent PRs."
+                        "  cicada-index-pr\n\n"
+                        "This will update the index with recent PRs (incremental by default)."
                     )
                     return [TextContent(type="text", text=error_msg)]
                 else:

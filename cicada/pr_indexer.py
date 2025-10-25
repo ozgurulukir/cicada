@@ -781,16 +781,17 @@ def main():
         help="Output path for the index file (default: .cicada/pr_index.json)",
     )
     parser.add_argument(
-        "--incremental",
+        "--clean",
         action="store_true",
-        help="Only fetch new PRs since last index (faster)",
+        help="Clean and rebuild the entire index from scratch (default: incremental update)",
     )
 
     args = parser.parse_args()
 
     try:
         indexer = PRIndexer(repo_path=args.repo)
-        indexer.index_repository(output_path=args.output, incremental=args.incremental)
+        # Incremental by default, unless --clean is specified
+        indexer.index_repository(output_path=args.output, incremental=not args.clean)
 
         print(
             "\n✅ Indexing complete! You can now use the MCP tools for PR history lookups."

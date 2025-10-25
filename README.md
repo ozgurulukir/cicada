@@ -179,8 +179,8 @@ Index pull requests for enhanced git history features:
 # Full index (first time, requires GitHub CLI)
 cicada-index-pr .
 
-# Incremental update (faster, only new PRs)
-cicada-index-pr . --incremental
+# Clean rebuild (re-index everything from scratch)
+cicada-index-pr . --clean
 ```
 
 **Requirements:**
@@ -633,14 +633,14 @@ gh auth login
 # Index PRs (first time or after new PRs)
 cicada-index-pr .
 
-# Incremental update (faster)
-cicada-index-pr . --incremental
+# Clean rebuild (re-index everything from scratch)
+cicada-index-pr . --clean
 ```
 
 **Common issues:**
 - "No PR index found" → Run `cicada-index-pr .`
 - "Not a GitHub repository" → Ensure repo has GitHub remote
-- Slow indexing → Use `--incremental` for updates
+- Slow indexing → Incremental updates are used by default
 
 #### Uninstall
 

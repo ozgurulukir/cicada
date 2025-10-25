@@ -26,11 +26,11 @@ The PR indexing system allows you to find which pull request introduced any line
 ### 1. Index Your Repository
 
 ```bash
-# Full index (first time)
+# Index PRs (incremental by default - updates existing index with new PRs)
 python cicada/pr_indexer.py /path/to/your/repo
 
-# Incremental update (faster, only new PRs)
-python cicada/pr_indexer.py /path/to/your/repo --incremental
+# Clean rebuild (re-index everything from scratch)
+python cicada/pr_indexer.py /path/to/your/repo --clean
 ```
 
 ### 2. Find PR for a Line
@@ -110,15 +110,15 @@ Index all pull requests from a GitHub repository.
 
 **Options:**
 - `--output PATH` - Output path for index file (default: .cicada/pr_index.json)
-- `--incremental` - Only fetch new PRs since last index (faster)
+- `--clean` - Clean and rebuild the entire index from scratch (default: incremental update)
 
 **Examples:**
 ```bash
-# Full index
+# Update index (incremental by default)
 python cicada/pr_indexer.py .
 
-# Incremental update
-python cicada/pr_indexer.py . --incremental
+# Clean rebuild (re-index everything)
+python cicada/pr_indexer.py . --clean
 
 # Custom output path
 python cicada/pr_indexer.py . --output /path/to/pr_index.json
@@ -167,17 +167,18 @@ python cicada/pr_finder.py README.md 1 --index-path /custom/path/pr_index.json
 
 ## Incremental Updates
 
-The indexer supports incremental updates to minimize API calls:
+The indexer uses incremental updates by default to minimize API calls:
 
 ```bash
-# First time: index all PRs
+# Run normally (incremental by default)
 python cicada/pr_indexer.py .
 
-# Later: only fetch new PRs since last index
-python cicada/pr_indexer.py . --incremental
+# Force clean rebuild if needed
+python cicada/pr_indexer.py . --clean
 ```
 
 The index tracks `last_pr_number` and only fetches PRs with higher numbers.
+When no existing index is found, a full index is automatically created.
 
 ## Use as a Library
 
@@ -236,7 +237,7 @@ GitHub API has rate limits:
 - Authenticated: 5,000 requests/hour
 - GraphQL batching: ~1 request per 10 PRs (vs 3 per PR with REST)
 - Can index ~2,500 PRs per hour (vs ~80 PRs with REST)
-- Use `--incremental` for subsequent updates to minimize API calls
+- Incremental updates are used by default; use `--clean` only when needed
 
 ## MCP Tools
 
