@@ -47,7 +47,7 @@ class CicadaServer:
         if not index_path.exists():
             raise FileNotFoundError(
                 f"Index file not found: {index_path}\n"
-                f"Run 'python indexer.py --repo <path>' to create an index first."
+                f"Run 'python indexer.py <path>' to create an index first."
             )
 
         with open(index_path, "r") as f:

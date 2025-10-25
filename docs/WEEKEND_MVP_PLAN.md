@@ -690,8 +690,8 @@ class CodebaseIndexer:
 
 def main():
     parser = argparse.ArgumentParser(description='Index an Elixir codebase')
-    parser.add_argument('--repo', required=True, help='Path to repository')
-    parser.add_argument('--output', default='./data/index.json', 
+    parser.add_argument('repo', help='Path to repository')
+    parser.add_argument('--output', default='./data/index.json',
                        help='Output path for index')
     
     args = parser.parse_args()
@@ -708,7 +708,7 @@ if __name__ == '__main__':
 
 ```bash
 # Index a repository (use a small test repo first!)
-python indexer.py --repo /path/to/small/elixir/project
+python indexer.py /path/to/small/elixir/project
 
 # Verify the index was created
 cat data/index.json | head -n 50
@@ -1307,7 +1307,7 @@ python github_helper.py owner/repo
 **Test Everything:**
 ```bash
 # Full workflow test
-python indexer.py --repo /path/to/test/project
+python indexer.py /path/to/test/project
 python context.py  # Should show function details
 python git_helper.py /path/to/test/project  # Should show commits
 ```
@@ -2170,7 +2170,7 @@ async def get_implementation_help(self, function_name: str) -> dict:
 
 ```bash
 # Make sure index is up to date
-python indexer.py --repo /path/to/project
+python indexer.py /path/to/project
 
 # Start server
 python mcp_server.py
@@ -2271,7 +2271,7 @@ echo "Running integration tests..."
 
 # Test 1: Index a small repository
 echo "Test 1: Indexing..."
-python indexer.py --repo ./test_fixtures/small_project
+python indexer.py ./test_fixtures/small_project
 if [ $? -eq 0 ]; then
     echo "✓ Indexing successful"
 else

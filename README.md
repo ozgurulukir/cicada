@@ -54,7 +54,7 @@ Using [uv](https://github.com/astral-sh/uv) (10-100x faster than pip):
 ```bash
 # Install and configure in one command
 cd /path/to/your/elixir/project
-uvx --from git+https://github.com/wende/cicada.git cicada-setup --repo .
+uvx --from git+https://github.com/wende/cicada.git cicada-setup
 ```
 
 Or install as a persistent tool:
@@ -65,7 +65,7 @@ uv tool install git+https://github.com/wende/cicada.git
 
 # Use in any project
 cd /path/to/elixir/project
-cicada-setup --repo .
+cicada-setup
 ```
 
 ### Traditional Install
@@ -74,7 +74,7 @@ Without uv:
 
 ```bash
 cd /path/to/your/elixir/project
-python3 /path/to/cicada/install.py --repo .
+python3 /path/to/cicada/install.py
 ```
 
 ### Manual Setup
@@ -90,7 +90,7 @@ cd cicada
 pip install -r requirements.txt
 
 # Index your Elixir project
-python -m cicada.indexer --repo /path/to/your/elixir/project
+python -m cicada.indexer /path/to/your/elixir/project
 
 # Configure for Claude Code (see Configuration section)
 ```
@@ -315,29 +315,31 @@ Created automatically by the setup script:
     "cicada": {
       "command": "python",
       "args": ["/absolute/path/to/cicada/cicada/mcp_server.py"],
-      "cwd": "/absolute/path/to/cicada",
-      "env": {
-        "CICADA_INDEX_PATH": "/path/to/project/.cicada/index.json"
-      }
+      "cwd": "/absolute/path/to/cicada"
     }
   }
 }
 ```
 
+The index path is automatically configured in `.cicada/config.yaml` during setup.
+
 ### Setup Options
 
 ```bash
-# Basic setup
-cicada-setup --repo .
+# Basic setup (current directory is the default)
+cicada-setup
 
 # Include PR information (requires GitHub CLI)
-cicada-setup --repo . --pr-info
+cicada-setup --pr-info
 
 # Skip dependency installation
-cicada-setup --repo . --skip-install
+cicada-setup --skip-install
 
 # Custom installation directory
-cicada-setup --repo . --cicada-dir /custom/path
+cicada-setup --cicada-dir /custom/path
+
+# Or specify a different repository path
+cicada-setup /path/to/other/project
 ```
 
 ### Re-indexing
@@ -346,10 +348,10 @@ After code changes, re-index your project:
 
 ```bash
 # Quick re-index (uses existing installation)
-cicada-setup --repo . --skip-install
+cicada-setup --skip-install
 
 # Or use the indexer directly
-cicada-index --repo . --output .cicada/index.json
+cicada-index --output .cicada/index.json
 ```
 
 ---
@@ -467,7 +469,7 @@ When reporting bugs or requesting features:
 
 Run the indexer first:
 ```bash
-cicada-index --repo /path/to/project
+cicada-index /path/to/project
 ```
 
 ### "Module not found"
@@ -494,7 +496,7 @@ brew install gh  # macOS
 gh auth login
 
 # Re-run indexer with PR info
-cicada-index --repo . --fetch-pr-info
+cicada-index --fetch-pr-info
 ```
 
 #### Uninstall

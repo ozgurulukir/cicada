@@ -4,7 +4,6 @@
 
 set -e
 
-REPO_PATH="${1:-.}"
 GITHUB_URL="${CICADA_GITHUB_URL:-https://github.com/USERNAME/cicada.git}"
 INSTALL_DIR="${CICADA_INSTALL_DIR:-$HOME/.cicada}"
 
@@ -12,7 +11,6 @@ echo "=================================="
 echo "Cicada MCP Quick Install"
 echo "=================================="
 echo ""
-echo "Repository: $REPO_PATH"
 echo "Install Dir: $INSTALL_DIR"
 echo ""
 
@@ -44,7 +42,7 @@ fi
 
 # Run setup
 cd "$INSTALL_DIR"
-python3 setup.py --repo "$REPO_PATH"
+python3 setup.py
 
 echo ""
 echo "=================================="

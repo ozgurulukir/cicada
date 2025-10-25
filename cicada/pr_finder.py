@@ -45,7 +45,7 @@ class PRFinder:
                 print(f"Loaded PR index with {self.index['metadata']['total_prs']} PRs")
             elif not self.index:
                 # Always show warning (even in non-verbose mode) with color
-                print(f"\033[33m⚠️  No PR index found - using slower network lookups. Create index: python cicada/pr_indexer.py --repo {repo_path}\033[0m", file=sys.stderr)
+                print(f"\033[33m⚠️  No PR index found - using slower network lookups. Create index: python cicada/pr_indexer.py\033[0m", file=sys.stderr)
 
         # Only validate gh CLI if we might need it (no index or index disabled)
         if not self.use_index or not self.index:
@@ -397,11 +397,6 @@ def main():
     parser.add_argument("file", help="Path to the file")
     parser.add_argument("line", type=int, help="Line number (1-indexed)")
     parser.add_argument(
-        "--repo",
-        default=".",
-        help="Path to git repository (default: current directory)",
-    )
-    parser.add_argument(
         "--format",
         choices=["text", "json", "markdown"],
         default="text",
@@ -422,7 +417,7 @@ def main():
 
     try:
         finder = PRFinder(
-            repo_path=args.repo,
+            repo_path=".",
             use_index=not args.no_index,
             index_path=args.index_path,
             verbose=True,

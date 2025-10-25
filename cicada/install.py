@@ -251,10 +251,11 @@ def main():
     """Main entry point for the setup script."""
     parser = argparse.ArgumentParser(
         description="One-command setup for Cicada MCP server",
-        epilog="Example: python setup.py --repo /path/to/elixir/project",
+        epilog="Example: python setup.py /path/to/elixir/project",
     )
     parser.add_argument(
-        "--repo",
+        "repo",
+        nargs="?",
         default=".",
         help="Path to the Elixir repository to index (default: current directory)",
     )

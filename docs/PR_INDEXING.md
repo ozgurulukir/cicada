@@ -21,10 +21,10 @@ The PR indexing system allows you to find which pull request introduced any line
 
 ```bash
 # Full index (first time)
-python cicada/pr_indexer.py --repo /path/to/your/repo
+python cicada/pr_indexer.py /path/to/your/repo
 
 # Incremental update (faster, only new PRs)
-python cicada/pr_indexer.py --repo /path/to/your/repo --incremental
+python cicada/pr_indexer.py /path/to/your/repo --incremental
 ```
 
 ### 2. Find PR for a Line
@@ -79,21 +79,23 @@ The index file (`data/pr_index.json`) contains:
 
 Index all pull requests from a GitHub repository.
 
+**Arguments:**
+- `repo` - Path to git repository (default: current directory)
+
 **Options:**
-- `--repo PATH` - Path to git repository (default: current directory)
 - `--output PATH` - Output path for index file (default: data/pr_index.json)
 - `--incremental` - Only fetch new PRs since last index (faster)
 
 **Examples:**
 ```bash
 # Full index
-python cicada/pr_indexer.py --repo .
+python cicada/pr_indexer.py .
 
 # Incremental update
-python cicada/pr_indexer.py --repo . --incremental
+python cicada/pr_indexer.py . --incremental
 
 # Custom output path
-python cicada/pr_indexer.py --repo . --output /path/to/pr_index.json
+python cicada/pr_indexer.py . --output /path/to/pr_index.json
 ```
 
 ### pr_finder.py
@@ -105,7 +107,6 @@ Find the PR that introduced a specific line of code.
 - `line` - Line number (1-indexed)
 
 **Options:**
-- `--repo PATH` - Path to git repository (default: current directory)
 - `--format {text,json,markdown}` - Output format (default: text)
 - `--no-index` - Disable index and use network instead
 - `--index-path PATH` - Path to PR index file (default: data/pr_index.json)
@@ -137,10 +138,10 @@ The indexer supports incremental updates to minimize API calls:
 
 ```bash
 # First time: index all PRs
-python cicada/pr_indexer.py --repo .
+python cicada/pr_indexer.py .
 
 # Later: only fetch new PRs since last index
-python cicada/pr_indexer.py --repo . --incremental
+python cicada/pr_indexer.py . --incremental
 ```
 
 The index tracks `last_pr_number` and only fetches PRs with higher numbers.
@@ -189,7 +190,7 @@ print(finder.format_result(result, "markdown"))
 - Run `gh repo view` to verify GitHub CLI can access the repo
 
 **"PR index not found"**
-- Run `python cicada/pr_indexer.py --repo .` to create the index
+- Run `python cicada/pr_indexer.py .` to create the index
 - Check that `data/pr_index.json` exists
 
 **"GitHub CLI not found"**

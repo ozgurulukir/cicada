@@ -406,7 +406,8 @@ def main():
         description="Index GitHub pull requests for fast offline lookup"
     )
     parser.add_argument(
-        "--repo",
+        "repo",
+        nargs="?",
         default=".",
         help="Path to git repository (default: current directory)",
     )
