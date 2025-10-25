@@ -126,13 +126,20 @@ class GitHelper:
         commits = []
 
         for commit in self.repo.iter_commits(max_count=max_count):
+            # Try to get stats, but handle errors for initial/incomplete commits
+            try:
+                files_changed = len(commit.stats.files)
+            except Exception:
+                # Can't get stats (e.g., initial commit, shallow clone)
+                files_changed = 0
+
             commits.append({
                 'sha': commit.hexsha[:8],
                 'full_sha': commit.hexsha,
                 'author': str(commit.author),
                 'date': commit.committed_datetime.isoformat(),
                 'message': commit.summary,
-                'files_changed': len(commit.stats.files)
+                'files_changed': files_changed
             })
 
         return commits
@@ -159,6 +166,17 @@ class GitHelper:
         try:
             commit = self.repo.commit(commit_sha)
 
+            # Try to get stats, but handle errors for initial/incomplete commits
+            try:
+                files_changed = list(commit.stats.files.keys())
+                insertions = commit.stats.total['insertions']
+                deletions = commit.stats.total['deletions']
+            except Exception:
+                # Can't get stats (e.g., initial commit, shallow clone)
+                files_changed = []
+                insertions = 0
+                deletions = 0
+
             return {
                 'sha': commit.hexsha[:8],
                 'full_sha': commit.hexsha,
@@ -166,9 +184,9 @@ class GitHelper:
                 'author_email': commit.author.email,
                 'date': commit.committed_datetime.isoformat(),
                 'message': commit.message.strip(),
-                'files_changed': list(commit.stats.files.keys()),
-                'insertions': commit.stats.total['insertions'],
-                'deletions': commit.stats.total['deletions']
+                'files_changed': files_changed,
+                'insertions': insertions,
+                'deletions': deletions
             }
         except Exception as e:
             print(f"Error getting commit {commit_sha}: {e}")
