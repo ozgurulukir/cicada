@@ -508,12 +508,70 @@ class PRIndexer:
         last_pr_number = existing_index.get("metadata", {}).get("last_pr_number", 0)
         print(f"Performing incremental update (last PR: #{last_pr_number})...")
 
-        # Fetch all PRs and filter for new ones
-        all_prs = self.fetch_all_prs()
-        new_prs = [pr for pr in all_prs if pr["number"] > last_pr_number]
+        # Fetch PR numbers (newest first) until we hit PRs we already have
+        # Use a large limit to handle bulk updates, but stop early when we find indexed PRs
+        new_pr_numbers = []
+        fetch_limit = 1000  # Check up to 1000 most recent PRs
 
-        print(f"Found {len(new_prs)} new PRs")
-        return new_prs
+        try:
+            result = subprocess.run(
+                [
+                    "gh",
+                    "pr",
+                    "list",
+                    "--state",
+                    "all",
+                    "--json",
+                    "number",
+                    "--limit",
+                    str(fetch_limit),
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+                cwd=self.repo_path,
+            )
+
+            pr_list = json.loads(result.stdout)
+
+            # PRs are returned newest-first by default
+            for pr in pr_list:
+                pr_num = pr["number"]
+                if pr_num <= last_pr_number:
+                    # Hit a PR we already have, stop here
+                    break
+                new_pr_numbers.append(pr_num)
+
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Failed to fetch PRs: {e.stderr}")
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Failed to parse PR data: {e}")
+
+        if not new_pr_numbers:
+            print(f"Found 0 new PRs")
+            return []
+
+        print(f"Found {len(new_pr_numbers)} new PRs")
+
+        # Fetch detailed info for only the new PRs
+        detailed_prs = []
+        batch_size = 10
+        total_batches = (len(new_pr_numbers) + batch_size - 1) // batch_size
+
+        try:
+            for i in range(0, len(new_pr_numbers), batch_size):
+                batch = new_pr_numbers[i:i + batch_size]
+                print(f"  Fetching batch {i//batch_size + 1}/{total_batches} ({len(batch)} PRs)...")
+
+                batch_prs = self._fetch_prs_batch_graphql(batch)
+                detailed_prs.extend(batch_prs)
+
+        except KeyboardInterrupt:
+            print(f"\n\n⚠️  Interrupted by user. Fetched {len(detailed_prs)}/{len(new_pr_numbers)} PRs.")
+            print("Saving partial index...")
+            return detailed_prs
+
+        return detailed_prs
 
     def merge_indexes(
         self, existing_index: Dict[str, Any], new_prs: List[Dict[str, Any]]
