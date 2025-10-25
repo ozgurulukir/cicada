@@ -244,6 +244,51 @@ Module names are case-sensitive and must match exactly (e.g., `MyApp.User`, not 
         return json.dumps(error_result, indent=2)
 
     @staticmethod
+    def _group_call_sites_by_caller(call_sites: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
+        """
+        Group call sites by their caller (calling_module + calling_function).
+
+        Args:
+            call_sites: List of call site dictionaries
+
+        Returns:
+            List of grouped call sites with consolidated line numbers
+        """
+        grouped = {}
+        for site in call_sites:
+            # Create a key based on caller identity
+            calling_func = site.get("calling_function")
+            if calling_func:
+                key = (site['calling_module'], calling_func['name'], calling_func['arity'])
+            else:
+                key = (site['calling_module'], None, None)
+
+            if key not in grouped:
+                grouped[key] = {
+                    'calling_module': site['calling_module'],
+                    'calling_function': calling_func,
+                    'file': site['file'],
+                    'lines': [],
+                    'code_lines': []
+                }
+
+            grouped[key]['lines'].append(site['line'])
+            if 'code_line' in site:
+                grouped[key]['code_lines'].append({
+                    'line': site['line'],
+                    'code': site['code_line']
+                })
+
+        # Convert back to list and sort lines
+        result = []
+        for key, data in grouped.items():
+            data['lines'].sort()
+            data['code_lines'].sort(key=lambda x: x['line'])
+            result.append(data)
+
+        return result
+
+    @staticmethod
     def format_function_results_markdown(
         function_name: str, results: list[Dict[str, Any]]
     ) -> str:
@@ -331,8 +376,10 @@ No functions matching `{function_name}` were found in the index.
                     lines.append(f"{indent}**Usage Examples:**")
 
                     if code_sites:
-                        lines.append(f"{indent}  Code ({len(code_sites)}):")
-                        for site in code_sites:
+                        # Group code sites by caller
+                        grouped_code = ModuleFormatter._group_call_sites_by_caller(code_sites)
+                        lines.append(f"{indent}  Code ({len(grouped_code)}):")
+                        for site in grouped_code:
                             # Format calling location with function if available
                             calling_func = site.get("calling_function")
                             if calling_func:
@@ -340,21 +387,27 @@ No functions matching `{function_name}` were found in the index.
                             else:
                                 caller = site["calling_module"]
 
+                            # Show consolidated line numbers
+                            line_list = ", ".join(f":{line}" for line in site['lines'])
                             lines.append(
-                                f"{indent}  - `{caller}` at `{site['file']}:{site['line']}`"
+                                f"{indent}  - `{caller}` at `{site['file']}`{line_list}"
                             )
 
-                            # Add the actual code line if available
-                            if "code_line" in site:
-                                lines.append(f"{indent}    ```")
-                                lines.append(f"{indent}    {site['code_line']}")
-                                lines.append(f"{indent}    ```")
+                            # Add the actual code lines if available
+                            if site.get('code_lines'):
+                                for code_entry in site['code_lines']:
+                                    lines.append(f"{indent}    :{code_entry['line']}")
+                                    lines.append(f"{indent}    ```")
+                                    lines.append(f"{indent}    {code_entry['code']}")
+                                    lines.append(f"{indent}    ```")
 
                     if test_sites:
                         if code_sites:
                             lines.append("")  # Blank line between sections
-                        lines.append(f"{indent}  Test ({len(test_sites)}):")
-                        for site in test_sites:
+                        # Group test sites by caller
+                        grouped_test = ModuleFormatter._group_call_sites_by_caller(test_sites)
+                        lines.append(f"{indent}  Test ({len(grouped_test)}):")
+                        for site in grouped_test:
                             # Format calling location with function if available
                             calling_func = site.get("calling_function")
                             if calling_func:
@@ -362,15 +415,19 @@ No functions matching `{function_name}` were found in the index.
                             else:
                                 caller = site["calling_module"]
 
+                            # Show consolidated line numbers
+                            line_list = ", ".join(f":{line}" for line in site['lines'])
                             lines.append(
-                                f"{indent}  - `{caller}` at `{site['file']}:{site['line']}`"
+                                f"{indent}  - `{caller}` at `{site['file']}`{line_list}"
                             )
 
-                            # Add the actual code line if available
-                            if "code_line" in site:
-                                lines.append(f"{indent}    ```")
-                                lines.append(f"{indent}    {site['code_line']}")
-                                lines.append(f"{indent}    ```")
+                            # Add the actual code lines if available
+                            if site.get('code_lines'):
+                                for code_entry in site['code_lines']:
+                                    lines.append(f"{indent}    :{code_entry['line']}")
+                                    lines.append(f"{indent}    ```")
+                                    lines.append(f"{indent}    {code_entry['code']}")
+                                    lines.append(f"{indent}    ```")
                 else:
                     # Separate into code and test call sites
                     code_sites = [
@@ -382,8 +439,10 @@ No functions matching `{function_name}` were found in the index.
                     lines.append(f"{indent}**Called {call_count} times:**")
 
                     if code_sites:
-                        lines.append(f"{indent}  Code ({len(code_sites)}):")
-                        for site in code_sites:
+                        # Group code sites by caller
+                        grouped_code = ModuleFormatter._group_call_sites_by_caller(code_sites)
+                        lines.append(f"{indent}  Code ({len(grouped_code)}):")
+                        for site in grouped_code:
                             # Format calling location with function if available
                             calling_func = site.get("calling_function")
                             if calling_func:
@@ -391,15 +450,19 @@ No functions matching `{function_name}` were found in the index.
                             else:
                                 caller = site["calling_module"]
 
+                            # Show consolidated line numbers
+                            line_list = ", ".join(f":{line}" for line in site['lines'])
                             lines.append(
-                                f"{indent}  - `{caller}` at `{site['file']}:{site['line']}`"
+                                f"{indent}  - `{caller}` at `{site['file']}`{line_list}"
                             )
 
                     if test_sites:
                         if code_sites:
                             lines.append("")  # Blank line between sections
-                        lines.append(f"{indent}  Test ({len(test_sites)}):")
-                        for site in test_sites:
+                        # Group test sites by caller
+                        grouped_test = ModuleFormatter._group_call_sites_by_caller(test_sites)
+                        lines.append(f"{indent}  Test ({len(grouped_test)}):")
+                        for site in grouped_test:
                             # Format calling location with function if available
                             calling_func = site.get("calling_function")
                             if calling_func:
@@ -407,8 +470,10 @@ No functions matching `{function_name}` were found in the index.
                             else:
                                 caller = site["calling_module"]
 
+                            # Show consolidated line numbers
+                            line_list = ", ".join(f":{line}" for line in site['lines'])
                             lines.append(
-                                f"{indent}  - `{caller}` at `{site['file']}:{site['line']}`"
+                                f"{indent}  - `{caller}` at `{site['file']}`{line_list}"
                             )
             else:
                 lines.extend([f"{indent}*No call sites found*"])
