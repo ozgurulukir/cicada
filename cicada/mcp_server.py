@@ -26,6 +26,7 @@ class CicadaServer:
         """Initialize the server with configuration."""
         self.config = self._load_config(config_path)
         self.index = self._load_index()
+        self.pr_index = self._load_pr_index()
         self.server = Server("cicada")
 
         # Initialize git helper
@@ -63,6 +64,23 @@ class CicadaServer:
 
         with open(index_path, "r") as f:
             return json.load(f)
+
+    def _load_pr_index(self) -> dict:
+        """Load the PR index from JSON file."""
+        # Get repo path from config
+        repo_path = Path(self.config.get("repository", {}).get("path", "."))
+        pr_index_path = repo_path / "data" / "pr_index.json"
+
+        if not pr_index_path.exists():
+            print(f"Warning: PR index not found at {pr_index_path}", file=sys.stderr)
+            return None
+
+        try:
+            with open(pr_index_path, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Warning: Could not load PR index: {e}", file=sys.stderr)
+            return None
 
     async def list_tools(self) -> list[Tool]:
         """List available MCP tools."""
@@ -253,22 +271,28 @@ class CicadaServer:
             Tool(
                 name="get_file_history",
                 description=(
-                    "PREFERRED for git history: Get commit history for a file or function.\n\n"
+                    "PREFERRED for git history: Get commit history for a file or function with precise tracking.\n\n"
                     "## When to use\n"
                     "- Understanding how a file has evolved over time\n"
                     "- Finding who has worked on specific code\n"
                     "- Tracking changes to a function across commits\n"
-                    "- Getting context about code evolution\n\n"
+                    "- Getting context about code evolution\n"
+                    "- Understanding when a function was created and how often it's modified\n\n"
                     "## How to use\n"
                     "1. File history: file_path='lib/my_app/user.ex'\n"
                     "2. Limit commits: max_commits=5\n"
-                    "3. Function-specific: file_path='lib/my_app/user.ex', function_name='create_user', line_number=42\n\n"
+                    "3. Heuristic function search: file_path='lib/my_app/user.ex', function_name='create_user'\n"
+                    "4. Precise function tracking: start_line=42, end_line=58, precise_tracking=True\n"
+                    "5. Function evolution: start_line=42, end_line=58, show_evolution=True\n\n"
                     "## Output includes\n"
                     "- Commit SHA (short and full)\n"
                     "- Author name and email\n"
                     "- Commit date\n"
                     "- Commit message\n"
-                    "- Relevance indicator (for function searches)\n\n"
+                    "- Relevance indicator (for heuristic function searches)\n"
+                    "- Evolution metadata (creation date, last modified, modification count) when show_evolution=True\n\n"
+                    "**Precise tracking**: When start_line and end_line are provided with precise_tracking=True, "
+                    "uses git log -L to track exact line changes (more accurate than heuristic search).\n\n"
                     "Complements find_pr_for_line by providing full commit history rather than just PR attribution."
                 ),
                 inputSchema={
@@ -280,12 +304,27 @@ class CicadaServer:
                         },
                         "function_name": {
                             "type": "string",
-                            "description": "Optional: function name to track changes for specific function",
+                            "description": "Optional: function name for heuristic search (filters by function name in commits)",
                         },
-                        "line_number": {
+                        "start_line": {
                             "type": "integer",
-                            "description": "Optional: line number where function is defined (used with function_name)",
+                            "description": "Optional: starting line number of function (for precise tracking)",
                             "minimum": 1,
+                        },
+                        "end_line": {
+                            "type": "integer",
+                            "description": "Optional: ending line number of function (for precise tracking)",
+                            "minimum": 1,
+                        },
+                        "precise_tracking": {
+                            "type": "boolean",
+                            "description": "Use git log -L for exact line-range tracking (requires start_line and end_line). More accurate than heuristic search. (default: False)",
+                            "default": False,
+                        },
+                        "show_evolution": {
+                            "type": "boolean",
+                            "description": "Include function evolution metadata: creation date, last modified, total modifications (requires start_line and end_line). (default: False)",
+                            "default": False,
                         },
                         "max_commits": {
                             "type": "integer",
@@ -293,6 +332,80 @@ class CicadaServer:
                             "default": 10,
                             "minimum": 1,
                             "maximum": 50,
+                        },
+                    },
+                    "required": ["file_path"],
+                },
+            ),
+            Tool(
+                name="get_function_blame",
+                description=(
+                    "PREFERRED for authorship: Show line-by-line authorship for a function.\n\n"
+                    "## When to use\n"
+                    "- Finding out who wrote specific lines of code\n"
+                    "- Understanding code ownership and responsibility\n"
+                    "- Identifying authors to ask about specific code sections\n"
+                    "- Code review and accountability\n\n"
+                    "## How to use\n"
+                    "Provide file path and line range: file_path='lib/my_app/user.ex', start_line=42, end_line=58\n\n"
+                    "## Output includes\n"
+                    "- Author name and email for each group of lines\n"
+                    "- Commit SHA and date\n"
+                    "- Line ranges grouped by author\n"
+                    "- Actual code content for each line\n\n"
+                    "Consecutive lines by the same author/commit are grouped together for easier reading."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "Path to the file (relative to repo root)",
+                        },
+                        "start_line": {
+                            "type": "integer",
+                            "description": "Starting line number of the code section",
+                            "minimum": 1,
+                        },
+                        "end_line": {
+                            "type": "integer",
+                            "description": "Ending line number of the code section",
+                            "minimum": 1,
+                        },
+                    },
+                    "required": ["file_path", "start_line", "end_line"],
+                },
+            ),
+            Tool(
+                name="get_file_pr_history",
+                description=(
+                    "Get all pull requests that modified a specific file, including PR descriptions and review comments.\n\n"
+                    "## When to use\n"
+                    "- Understanding the evolution of a file through PRs\n"
+                    "- Finding relevant discussions and decisions about a file\n"
+                    "- Reviewing past feedback and comments on code\n"
+                    "- Understanding why a file was changed and by whom\n\n"
+                    "## How to use\n"
+                    "Simply provide the file path: file_path='lib/my_app/user.ex'\n\n"
+                    "## Output includes\n"
+                    "For each PR that touched the file:\n"
+                    "- PR number, title, and URL\n"
+                    "- PR description/body\n"
+                    "- Author and merge status\n"
+                    "- Review comments specific to this file with:\n"
+                    "  - Comment author and body\n"
+                    "  - Current line number (if mappable)\n"
+                    "  - Original line number from PR\n"
+                    "  - Resolved status\n\n"
+                    "Results are sorted by PR number (newest first). Only includes resolved and top-level comments.\n\n"
+                    "Requires PR index (run: python cicada/pr_indexer.py)"
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "Path to the file (relative to repo root or absolute)",
                         },
                     },
                     "required": ["file_path"],
@@ -365,16 +478,48 @@ class CicadaServer:
         elif name == "get_file_history":
             file_path = arguments.get("file_path")
             function_name = arguments.get("function_name")
-            line_number = arguments.get("line_number")
+            start_line = arguments.get("start_line")
+            end_line = arguments.get("end_line")
+            precise_tracking = arguments.get("precise_tracking", False)
+            show_evolution = arguments.get("show_evolution", False)
             max_commits = arguments.get("max_commits", 10)
 
             if not file_path:
                 error_msg = "'file_path' is required"
                 return [TextContent(type="text", text=error_msg)]
 
+            # Validate line range parameters
+            if precise_tracking or show_evolution:
+                if not start_line or not end_line:
+                    error_msg = "Both 'start_line' and 'end_line' are required for precise_tracking or show_evolution"
+                    return [TextContent(type="text", text=error_msg)]
+
             return await self._get_file_history(
-                file_path, function_name, line_number, max_commits
+                file_path, function_name, start_line, end_line,
+                precise_tracking, show_evolution, max_commits
             )
+        elif name == "get_function_blame":
+            file_path = arguments.get("file_path")
+            start_line = arguments.get("start_line")
+            end_line = arguments.get("end_line")
+
+            if not file_path:
+                error_msg = "'file_path' is required"
+                return [TextContent(type="text", text=error_msg)]
+
+            if not start_line or not end_line:
+                error_msg = "Both 'start_line' and 'end_line' are required"
+                return [TextContent(type="text", text=error_msg)]
+
+            return await self._get_function_blame(file_path, start_line, end_line)
+        elif name == "get_file_pr_history":
+            file_path = arguments.get("file_path")
+
+            if not file_path:
+                error_msg = "'file_path' is required"
+                return [TextContent(type="text", text=error_msg)]
+
+            return await self._get_file_pr_history(file_path)
         else:
             raise ValueError(f"Unknown tool: {name}")
 
@@ -500,6 +645,7 @@ class CicadaServer:
                         results.append(
                             {
                                 "module": module_name,
+                                "moduledoc": module_data.get("moduledoc"),
                                 "function": func,
                                 "file": module_data["file"],
                                 "call_sites": call_sites,
@@ -941,7 +1087,10 @@ class CicadaServer:
         self,
         file_path: str,
         function_name: str | None = None,
-        line_number: int | None = None,
+        start_line: int | None = None,
+        end_line: int | None = None,
+        precise_tracking: bool = False,
+        show_evolution: bool = False,
         max_commits: int = 10,
     ) -> list[TextContent]:
         """
@@ -949,25 +1098,72 @@ class CicadaServer:
 
         Args:
             file_path: Path to the file
-            function_name: Optional function name to track
-            line_number: Optional line number where function is defined
+            function_name: Optional function name for function tracking (git log -L :funcname:file)
+            start_line: Optional starting line for fallback line-based tracking
+            end_line: Optional ending line for fallback line-based tracking
+            precise_tracking: Deprecated (function tracking is always used when function_name provided)
+            show_evolution: Include function evolution metadata
             max_commits: Maximum number of commits to return
 
         Returns:
             TextContent with formatted commit history
+
+        Note:
+            - If function_name is provided, uses git's function tracking
+            - Function tracking works even as the function moves in the file
+            - Line numbers are used as fallback if function tracking fails
+            - Requires .gitattributes with "*.ex diff=elixir" for function tracking
         """
         if not self.git_helper:
             error_msg = "Git history is not available (repository may not be a git repo)"
             return [TextContent(type="text", text=error_msg)]
 
         try:
-            # If function name is provided, get function-specific history
-            if function_name and line_number:
-                commits = self.git_helper.get_function_history(
-                    file_path, function_name, line_number, max_commits
+            evolution = None
+            tracking_method = "file"
+
+            # Determine which tracking method to use
+            # Priority: function name > line numbers > file level
+            if function_name:
+                # Use function-based tracking (git log -L :funcname:file)
+                commits = self.git_helper.get_function_history_precise(
+                    file_path,
+                    start_line=start_line,
+                    end_line=end_line,
+                    function_name=function_name,
+                    max_commits=max_commits
                 )
                 title = f"Git History for {function_name} in {file_path}"
+                tracking_method = "function"
+
+                # Get evolution metadata if requested
+                if show_evolution:
+                    evolution = self.git_helper.get_function_evolution(
+                        file_path,
+                        start_line=start_line,
+                        end_line=end_line,
+                        function_name=function_name
+                    )
+
+            elif start_line and end_line:
+                # Use line-based tracking (git log -L start,end:file)
+                commits = self.git_helper.get_function_history_precise(
+                    file_path,
+                    start_line=start_line,
+                    end_line=end_line,
+                    max_commits=max_commits
+                )
+                title = f"Git History for {file_path} (lines {start_line}-{end_line})"
+                tracking_method = "line"
+
+                if show_evolution:
+                    evolution = self.git_helper.get_function_evolution(
+                        file_path,
+                        start_line=start_line,
+                        end_line=end_line
+                    )
             else:
+                # File-level history
                 commits = self.git_helper.get_file_history(file_path, max_commits)
                 title = f"Git History for {file_path}"
 
@@ -977,6 +1173,29 @@ class CicadaServer:
 
             # Format the results as markdown
             lines = [f"# {title}\n"]
+
+            # Add tracking method info
+            if tracking_method == "function":
+                lines.append("*Using function tracking (git log -L :funcname:file) - tracks function even as it moves*\n")
+            elif tracking_method == "line":
+                lines.append("*Using line-based tracking (git log -L start,end:file)*\n")
+
+            # Add evolution metadata if available
+            if evolution:
+                lines.append("## Function Evolution\n")
+                created = evolution['created_at']
+                modified = evolution['last_modified']
+
+                lines.append(f"- **Created:** {created['date'][:10]} by {created['author']} (commit `{created['sha']}`)")
+                lines.append(f"- **Last Modified:** {modified['date'][:10]} by {modified['author']} (commit `{modified['sha']}`)")
+                lines.append(f"- **Total Modifications:** {evolution['total_modifications']} commit(s)")
+
+                if evolution.get('modification_frequency'):
+                    freq = evolution['modification_frequency']
+                    lines.append(f"- **Modification Frequency:** {freq:.2f} commits/month")
+
+                lines.append("")  # Empty line
+
             lines.append(f"Found {len(commits)} commit(s)\n")
 
             for i, commit in enumerate(commits, 1):
@@ -1003,6 +1222,168 @@ class CicadaServer:
         except Exception as e:
             error_msg = f"Error getting file history: {str(e)}"
             return [TextContent(type="text", text=error_msg)]
+
+    async def _get_function_blame(
+        self,
+        file_path: str,
+        start_line: int,
+        end_line: int
+    ) -> list[TextContent]:
+        """
+        Get line-by-line authorship for a code section using git blame.
+
+        Args:
+            file_path: Path to the file
+            start_line: Starting line number
+            end_line: Ending line number
+
+        Returns:
+            TextContent with formatted blame information
+        """
+        if not self.git_helper:
+            error_msg = "Git blame is not available (repository may not be a git repo)"
+            return [TextContent(type="text", text=error_msg)]
+
+        try:
+            blame_groups = self.git_helper.get_function_blame(
+                file_path, start_line, end_line
+            )
+
+            if not blame_groups:
+                result = f"No blame information found for {file_path} lines {start_line}-{end_line}"
+                return [TextContent(type="text", text=result)]
+
+            # Format the results as markdown
+            lines = [f"# Git Blame for {file_path} (lines {start_line}-{end_line})\n"]
+            lines.append(f"Found {len(blame_groups)} authorship group(s)\n")
+
+            for i, group in enumerate(blame_groups, 1):
+                # Group header
+                line_range = f"lines {group['line_start']}-{group['line_end']}" if group['line_start'] != group['line_end'] else f"line {group['line_start']}"
+                lines.append(f"## Group {i}: {group['author']} ({line_range})")
+
+                lines.append(f"- **Author:** {group['author']} ({group['author_email']})")
+                lines.append(f"- **Commit:** `{group['sha']}`")
+                lines.append(f"- **Date:** {group['date'][:10]}")
+                lines.append(f"- **Lines:** {group['line_count']}\n")
+
+                # Show code lines
+                lines.append("**Code:**")
+                lines.append("```elixir")
+                for line_info in group['lines']:
+                    # Show line number and content
+                    lines.append(f"{line_info['content']}")
+                lines.append("```\n")
+
+            result = "\n".join(lines)
+            return [TextContent(type="text", text=result)]
+
+        except Exception as e:
+            error_msg = f"Error getting blame information: {str(e)}"
+            return [TextContent(type="text", text=error_msg)]
+
+    async def _get_file_pr_history(self, file_path: str) -> list[TextContent]:
+        """
+        Get all PRs that modified a specific file with descriptions and comments.
+
+        Args:
+            file_path: Path to the file (relative to repo root or absolute)
+
+        Returns:
+            TextContent with formatted PR history
+        """
+        if not self.pr_index:
+            error_msg = (
+                "PR index not available. Please run:\n"
+                "  python cicada/pr_indexer.py\n\n"
+                "This will create the PR index at data/pr_index.json"
+            )
+            return [TextContent(type="text", text=error_msg)]
+
+        # Normalize file path
+        repo_path = Path(self.config.get("repository", {}).get("path", "."))
+        file_path_obj = Path(file_path)
+
+        if file_path_obj.is_absolute():
+            try:
+                file_path_obj = file_path_obj.relative_to(repo_path)
+            except ValueError:
+                error_msg = f"File path {file_path} is not within repository {repo_path}"
+                return [TextContent(type="text", text=error_msg)]
+
+        file_path_str = str(file_path_obj)
+
+        # Look up PRs that touched this file
+        file_to_prs = self.pr_index.get("file_to_prs", {})
+        pr_numbers = file_to_prs.get(file_path_str, [])
+
+        if not pr_numbers:
+            result = f"No pull requests found that modified: {file_path_str}"
+            return [TextContent(type="text", text=result)]
+
+        # Get PR details
+        prs_data = self.pr_index.get("prs", {})
+
+        # Format results as markdown
+        lines = [f"# Pull Request History for {file_path_str}\n"]
+        lines.append(f"Found {len(pr_numbers)} pull request(s)\n")
+
+        for pr_num in pr_numbers:
+            pr = prs_data.get(str(pr_num))
+            if not pr:
+                continue
+
+            # PR Header
+            status = "merged" if pr.get("merged") else pr.get("state", "unknown")
+            lines.append(f"## PR #{pr['number']}: {pr['title']}")
+            lines.append(f"- **Author:** @{pr['author']}")
+            lines.append(f"- **Status:** {status}")
+            lines.append(f"- **URL:** {pr['url']}\n")
+
+            # PR Description
+            description = pr.get("description", "").strip()
+            if description:
+                lines.append("### Description")
+                lines.append(f"{description}\n")
+
+            # Review Comments for this file only
+            comments = pr.get("comments", [])
+            file_comments = [
+                c for c in comments
+                if c.get("path") == file_path_str
+            ]
+
+            if file_comments:
+                lines.append(f"### Review Comments ({len(file_comments)})")
+
+                for comment in file_comments:
+                    author = comment.get("author", "unknown")
+                    body = comment.get("body", "").strip()
+                    line_num = comment.get("line")
+                    original_line = comment.get("original_line")
+                    resolved = comment.get("resolved", False)
+
+                    # Comment header with line info
+                    if line_num:
+                        line_info = f"Line {line_num}"
+                    elif original_line:
+                        line_info = f"Original line {original_line} (unmapped)"
+                    else:
+                        line_info = "No line info"
+
+                    resolved_marker = " ✓ Resolved" if resolved else ""
+                    lines.append(f"\n**@{author}** ({line_info}){resolved_marker}:")
+
+                    # Indent comment body
+                    for line in body.split("\n"):
+                        lines.append(f"> {line}")
+
+                lines.append("")  # Empty line after comments
+
+            lines.append("---\n")  # Separator between PRs
+
+        result = "\n".join(lines)
+        return [TextContent(type="text", text=result)]
 
     async def run(self):
         """Run the MCP server."""

@@ -240,7 +240,7 @@ def test_format_function_results_markdown_with_consolidated_call_sites():
     )
 
     # Should have a single consolidated line for the caller
-    assert "`MyApp.Caller.handle_info/2` at `lib/my_app/caller.ex`:10, :20, :30" in markdown, \
+    assert "MyApp.Caller.handle_info/2 at lib/my_app/caller.ex:10, :20, :30" in markdown, \
         "Expected consolidated call sites in markdown output"
 
     # Should NOT have multiple separate lines for the same caller
@@ -290,7 +290,7 @@ def test_format_function_results_markdown_with_code_lines():
     )
 
     # Should have consolidated header
-    assert "`MyApp.Caller.process/1` at `lib/my_app/caller.ex`:10, :20" in markdown, \
+    assert "MyApp.Caller.process/1 at lib/my_app/caller.ex:10, :20" in markdown, \
         "Expected consolidated call sites header in markdown output"
 
     # Should have both code examples
@@ -364,7 +364,7 @@ def test_format_function_results_markdown_with_additional_call_sites():
     )
 
     # Should have Usage Examples section with the first 2
-    assert "**Usage Examples:**" in markdown, \
+    assert "Usage Examples:" in markdown, \
         "Expected Usage Examples section"
     assert "TargetModule.target_function(data1)" in markdown, \
         "Expected first code example"
@@ -372,7 +372,7 @@ def test_format_function_results_markdown_with_additional_call_sites():
         "Expected second code example"
 
     # Should have Other Call Sites section with the remaining 3
-    assert "**Other Call Sites:**" in markdown, \
+    assert "Other Call Sites:" in markdown, \
         "Expected Other Call Sites section"
     assert "MyApp.Caller3.execute/0" in markdown, \
         "Expected Caller3 in other call sites"

@@ -113,6 +113,357 @@ class GitHelper:
 
         return relevant_commits
 
+    def get_function_history_precise(
+        self,
+        file_path: str,
+        start_line: Optional[int] = None,
+        end_line: Optional[int] = None,
+        function_name: Optional[str] = None,
+        max_commits: int = 5
+    ) -> List[Dict]:
+        """
+        Get precise commit history for a function using git log -L.
+
+        This method uses git's native function tracking (when function_name is provided)
+        or line tracking (when start_line/end_line are provided) to find commits that
+        actually modified the function, even as it moves within the file.
+
+        Args:
+            file_path: Relative path to file from repo root
+            start_line: Starting line number (optional, for line-based tracking)
+            end_line: Ending line number (optional, for line-based tracking)
+            function_name: Function name to track (e.g., "create_user")
+            max_commits: Maximum number of commits to return
+
+        Returns:
+            List of commit information dictionaries with keys:
+            - sha: Short commit SHA (8 chars)
+            - full_sha: Full commit SHA
+            - author: Author name
+            - author_email: Author email
+            - date: Commit date in ISO format
+            - message: Full commit message
+            - summary: First line of commit message
+
+        Note:
+            - Provide either function_name OR (start_line, end_line)
+            - If function_name is provided and fails, falls back to line-based tracking
+            - Requires .gitattributes with "*.ex diff=elixir" for function tracking
+        """
+        commits = []
+
+        # Determine tracking mode
+        use_function_tracking = function_name is not None
+        use_line_tracking = start_line is not None and end_line is not None
+
+        if not use_function_tracking and not use_line_tracking:
+            print(f"Error: Must provide either function_name or (start_line, end_line)")
+            return []
+
+        try:
+            # Build git log -L command
+            if use_function_tracking:
+                # Try function-based tracking first: git log -L :funcname:file
+                line_spec = f':{function_name}:{file_path}'
+            else:
+                # Use line-based tracking: git log -L start,end:file
+                line_spec = f'{start_line},{end_line}:{file_path}'
+
+            cmd = [
+                'git', 'log',
+                f'-L{line_spec}',
+                f'--max-count={max_commits}',
+                '--format=%H|%an|%ae|%aI|%s',
+                '--no-patch'  # Don't show diffs, just commits
+            ]
+
+            # Run command in repo directory
+            import subprocess
+            result = subprocess.run(
+                cmd,
+                cwd=str(self.repo_path),
+                capture_output=True,
+                text=True,
+                check=True
+            )
+
+            # Parse output
+            for line in result.stdout.strip().split('\n'):
+                if not line or line.startswith('diff'):
+                    continue
+
+                parts = line.split('|')
+                if len(parts) >= 5:
+                    full_sha = parts[0]
+                    commits.append({
+                        'sha': full_sha[:8],
+                        'full_sha': full_sha,
+                        'author': parts[1],
+                        'author_email': parts[2],
+                        'date': parts[3],
+                        'summary': parts[4],
+                        'message': parts[4]  # Summary for now, can enhance later
+                    })
+
+        except subprocess.CalledProcessError as e:
+            # git log -L failed
+            error_msg = e.stderr if e.stderr else str(e)
+
+            # If function tracking failed and we have line numbers, try fallback
+            if use_function_tracking and start_line and end_line:
+                print(f"Function tracking failed for {function_name}, falling back to line tracking")
+                return self.get_function_history_precise(
+                    file_path,
+                    start_line=start_line,
+                    end_line=end_line,
+                    max_commits=max_commits
+                )
+            else:
+                print(f"Warning: git log -L failed for {file_path}: {error_msg}")
+                return []
+
+        except Exception as e:
+            print(f"Error getting precise history for {file_path}: {e}")
+            return []
+
+        return commits
+
+    def get_function_evolution(
+        self,
+        file_path: str,
+        start_line: Optional[int] = None,
+        end_line: Optional[int] = None,
+        function_name: Optional[str] = None
+    ) -> Optional[Dict]:
+        """
+        Get evolution metadata for a function (creation, last modification, change count).
+
+        Uses git log -L to track the complete history of a function and
+        extract key lifecycle information.
+
+        Args:
+            file_path: Relative path to file from repo root
+            start_line: Starting line number (optional, for line-based tracking)
+            end_line: Ending line number (optional, for line-based tracking)
+            function_name: Function name to track (e.g., "create_user")
+
+        Returns:
+            Dictionary with evolution information:
+            - created_at: {sha, date, author, message} for first commit
+            - last_modified: {sha, date, author, message} for most recent commit
+            - total_modifications: Total number of commits that touched this function
+            - modification_frequency: Average commits per month (if > 1 month of history)
+            Returns None if no history found or on error.
+
+        Note:
+            - Provide either function_name OR (start_line, end_line)
+        """
+        try:
+            # Get all commits that touched this function (no limit)
+            commits = self.get_function_history_precise(
+                file_path,
+                start_line=start_line,
+                end_line=end_line,
+                function_name=function_name,
+                max_commits=1000  # Get all commits
+            )
+
+            if not commits:
+                return None
+
+            # Calculate evolution metadata
+            created_at = commits[-1]  # Oldest commit (last in list)
+            last_modified = commits[0]  # Most recent commit (first in list)
+            total_modifications = len(commits)
+
+            # Calculate modification frequency (commits per month)
+            modification_frequency = None
+            if len(commits) > 1:
+                try:
+                    from datetime import datetime
+                    first_date = datetime.fromisoformat(created_at['date'])
+                    last_date = datetime.fromisoformat(last_modified['date'])
+                    days_between = (last_date - first_date).days
+
+                    if days_between > 0:
+                        months = days_between / 30.0
+                        modification_frequency = total_modifications / months if months > 0 else total_modifications
+                except Exception:
+                    # If date parsing fails, skip frequency calculation
+                    pass
+
+            return {
+                'created_at': {
+                    'sha': created_at['sha'],
+                    'full_sha': created_at['full_sha'],
+                    'date': created_at['date'],
+                    'author': created_at['author'],
+                    'author_email': created_at['author_email'],
+                    'message': created_at['summary']
+                },
+                'last_modified': {
+                    'sha': last_modified['sha'],
+                    'full_sha': last_modified['full_sha'],
+                    'date': last_modified['date'],
+                    'author': last_modified['author'],
+                    'author_email': last_modified['author_email'],
+                    'message': last_modified['summary']
+                },
+                'total_modifications': total_modifications,
+                'modification_frequency': modification_frequency
+            }
+
+        except Exception as e:
+            print(f"Error getting function evolution for {file_path}: {e}")
+            return None
+
+    def get_function_blame(
+        self,
+        file_path: str,
+        start_line: int,
+        end_line: int
+    ) -> List[Dict]:
+        """
+        Get line-by-line authorship for a function using git blame.
+
+        Shows who wrote each line of code, with consecutive lines by the
+        same author grouped together for easier reading.
+
+        Args:
+            file_path: Relative path to file from repo root
+            start_line: Starting line number of the function
+            end_line: Ending line number of the function
+
+        Returns:
+            List of blame groups, each containing:
+            - author: Author name
+            - author_email: Author email
+            - sha: Commit SHA (short)
+            - full_sha: Full commit SHA
+            - date: Commit date
+            - line_start: First line number in this group
+            - line_end: Last line number in this group
+            - line_count: Number of consecutive lines by this author
+            - lines: List of {number, content} for each line
+        """
+        blame_groups = []
+
+        try:
+            import subprocess
+
+            # Use git blame with line range
+            cmd = [
+                'git', 'blame',
+                f'-L{start_line},{end_line}',
+                '--porcelain',  # Machine-readable format
+                file_path
+            ]
+
+            result = subprocess.run(
+                cmd,
+                cwd=str(self.repo_path),
+                capture_output=True,
+                text=True,
+                check=True
+            )
+
+            # Parse porcelain format
+            lines_data = []
+            current_commit = {}
+
+            for line in result.stdout.split('\n'):
+                if not line:
+                    continue
+
+                # Commit SHA line (40 char hex)
+                if len(line) >= 40 and line[0:40].isalnum():
+                    parts = line.split()
+                    if len(parts) >= 3:
+                        current_commit = {
+                            'sha': parts[0][:8],
+                            'full_sha': parts[0],
+                            'line_number': int(parts[2])
+                        }
+                # Author name
+                elif line.startswith('author '):
+                    current_commit['author'] = line[7:]
+                # Author email
+                elif line.startswith('author-mail '):
+                    email = line[12:].strip('<>')
+                    current_commit['author_email'] = email
+                # Author time
+                elif line.startswith('author-time '):
+                    try:
+                        timestamp = int(line[12:])
+                        current_commit['date'] = datetime.fromtimestamp(timestamp).isoformat()
+                    except:
+                        current_commit['date'] = line[12:]
+                # Actual code line (starts with tab)
+                elif line.startswith('\t'):
+                    code_line = line[1:]  # Remove leading tab
+                    line_info = {
+                        **current_commit,
+                        'content': code_line
+                    }
+                    lines_data.append(line_info)
+
+            # Group consecutive lines by same author and commit
+            if lines_data:
+                current_group = {
+                    'author': lines_data[0]['author'],
+                    'author_email': lines_data[0]['author_email'],
+                    'sha': lines_data[0]['sha'],
+                    'full_sha': lines_data[0]['full_sha'],
+                    'date': lines_data[0]['date'],
+                    'line_start': lines_data[0]['line_number'],
+                    'line_end': lines_data[0]['line_number'],
+                    'lines': [{
+                        'number': lines_data[0]['line_number'],
+                        'content': lines_data[0]['content']
+                    }]
+                }
+
+                for line_info in lines_data[1:]:
+                    # Same author and commit? Extend current group
+                    if (line_info['author'] == current_group['author'] and
+                        line_info['sha'] == current_group['sha']):
+                        current_group['line_end'] = line_info['line_number']
+                        current_group['lines'].append({
+                            'number': line_info['line_number'],
+                            'content': line_info['content']
+                        })
+                    else:
+                        # Different author/commit - save current group and start new one
+                        current_group['line_count'] = len(current_group['lines'])
+                        blame_groups.append(current_group)
+                        current_group = {
+                            'author': line_info['author'],
+                            'author_email': line_info['author_email'],
+                            'sha': line_info['sha'],
+                            'full_sha': line_info['full_sha'],
+                            'date': line_info['date'],
+                            'line_start': line_info['line_number'],
+                            'line_end': line_info['line_number'],
+                            'lines': [{
+                                'number': line_info['line_number'],
+                                'content': line_info['content']
+                            }]
+                        }
+
+                # Add the last group
+                current_group['line_count'] = len(current_group['lines'])
+                blame_groups.append(current_group)
+
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr if e.stderr else str(e)
+            print(f"Warning: git blame failed for {file_path}:{start_line}-{end_line}: {error_msg}")
+            return []
+        except Exception as e:
+            print(f"Error getting blame for {file_path}: {e}")
+            return []
+
+        return blame_groups
+
     def get_recent_commits(self, max_count: int = 20) -> List[Dict]:
         """
         Get recent commits in the repository

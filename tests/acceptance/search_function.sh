@@ -92,4 +92,4 @@ done
 # Set default function if not provided
 FUNCTION="${FUNCTION:-add_numbers/2}"
 
-python -c "import asyncio; from cicada.mcp_server import CicadaServer; print(asyncio.run(CicadaServer()._search_function('$FUNCTION', output_format='markdown', include_usage_examples=$WITH_EXAMPLES, max_examples=$MAX_EXAMPLES, test_files_only=$TEST_ONLY))[0].text)"
+python -c "import asyncio; from cicada.mcp_server import CicadaServer; print(asyncio.run(CicadaServer(config_path='tests/fixtures/.cicada/config.yaml')._search_function('$FUNCTION', output_format='markdown', include_usage_examples=$WITH_EXAMPLES, max_examples=$MAX_EXAMPLES, test_files_only=$TEST_ONLY))[0].text)"

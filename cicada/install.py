@@ -187,8 +187,50 @@ def index_repository(cicada_dir, python_bin, repo_path, fetch_pr_info=False):
     return output_path
 
 
+def detect_installation_method():
+    """
+    Detect how cicada is installed and return appropriate MCP command config.
+
+    Returns:
+        tuple: (command, args, cwd, description)
+    """
+    import shutil
+    import sys
+
+    # Check if cicada-server is in PATH (from uv tool install)
+    if shutil.which('cicada-server'):
+        return (
+            "cicada-server",
+            [],
+            None,
+            "uv tool install (permanent, fast)"
+        )
+
+    # Check if running from a uv tools directory (recently installed)
+    script_path = Path(sys.argv[0]).resolve()
+    if '.local/share/uv/tools' in str(script_path) or '.local/bin/cicada-' in str(script_path):
+        # Installed via uv but maybe not in PATH yet
+        return (
+            "cicada-server",
+            [],
+            None,
+            "uv tool install (ensure ~/.local/bin is in PATH)"
+        )
+
+    # Fall back to python with full path
+    python_bin = sys.executable
+    cicada_dir = Path(__file__).parent.parent.resolve()
+
+    return (
+        str(python_bin),
+        [str(cicada_dir / "cicada" / "mcp_server.py")],
+        str(cicada_dir),
+        "direct python (tip: install with 'uv tool install .' for faster startup)"
+    )
+
+
 def create_mcp_config(repo_path, cicada_dir, python_bin):
-    """Create or update .mcp.json configuration file."""
+    """Create or update .mcp.json configuration file with intelligent command detection."""
     print("Creating .mcp.json configuration...")
 
     repo_path = Path(repo_path).resolve()
@@ -210,19 +252,38 @@ def create_mcp_config(repo_path, cicada_dir, python_bin):
     if "mcpServers" not in config:
         config["mcpServers"] = {}
 
+    # Detect installation method and create appropriate config
+    command, args, cwd, description = detect_installation_method()
+
+    print(f"ℹ️  Installation: {description}")
+
+    # Build MCP server configuration
+    server_config = {"command": command}
+
+    if args:
+        server_config["args"] = args
+
+    if cwd:
+        server_config["cwd"] = cwd
+
+    # Add environment variable for repo path
+    server_config["env"] = {"CICADA_REPO_PATH": str(repo_path)}
+
     # Add or update cicada configuration
-    config["mcpServers"]["cicada"] = {
-        "command": str(python_bin),
-        "args": [str(cicada_dir / "cicada" / "mcp_server.py")],
-        "cwd": str(cicada_dir),
-        "env": {"CICADA_REPO_PATH": str(repo_path)},
-    }
+    config["mcpServers"]["cicada"] = server_config
 
     # Write config file
     with open(mcp_config_path, "w") as f:
         json.dump(config, f, indent=2)
 
     print(f"✓ MCP configuration updated at {mcp_config_path}")
+
+    # Show what was configured
+    if command == "cicada-server":
+        print("✅ Using 'cicada-server' command (fast, no paths needed)")
+    else:
+        print(f"ℹ️  Using Python: {command}")
+
     return mcp_config_path
 
 
@@ -245,6 +306,44 @@ storage:
         f.write(config_content)
 
     print(f"✓ Config file created at {config_path}")
+
+
+def create_gitattributes(repo_path):
+    """Create or update .gitattributes in repository root for Elixir function tracking."""
+    repo_path = Path(repo_path).resolve()
+    gitattributes_path = repo_path / ".gitattributes"
+
+    elixir_patterns = [
+        "*.ex diff=elixir",
+        "*.exs diff=elixir"
+    ]
+
+    # Read existing .gitattributes if present
+    existing_lines = []
+    if gitattributes_path.exists():
+        with open(gitattributes_path, "r") as f:
+            existing_lines = [line.rstrip() for line in f.readlines()]
+
+    # Check if elixir patterns already exist
+    has_elixir = any(
+        pattern in existing_lines for pattern in elixir_patterns
+    )
+
+    if has_elixir:
+        print(f"✓ .gitattributes already has Elixir patterns")
+        return gitattributes_path
+
+    # Add elixir patterns
+    with open(gitattributes_path, "a") as f:
+        if existing_lines and not existing_lines[-1] == "":
+            f.write("\n")  # Add newline if file doesn't end with one
+
+        f.write("# Elixir function tracking for git log -L\n")
+        for pattern in elixir_patterns:
+            f.write(f"{pattern}\n")
+
+    print(f"✓ Added Elixir patterns to {gitattributes_path}")
+    return gitattributes_path
 
 
 def main():
@@ -340,6 +439,9 @@ def main():
 
     # Create config.yaml
     create_config_yaml(cicada_dir, args.repo, index_path)
+
+    # Create .gitattributes for Elixir function tracking
+    create_gitattributes(args.repo)
 
     # Create .mcp.json
     mcp_config_path = create_mcp_config(args.repo, cicada_dir, python_bin)

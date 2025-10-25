@@ -6,7 +6,7 @@
 
 ### **C**ode **I**ntelligence: **C**ontextual **A**nalysis, **D**iscovery, and **A**ttribution
 
-*Claude searches blindly. Be its guide.*
+*Give your AI assistant eyes into your codebase.*
 
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -15,10 +15,10 @@
 [![Elixir](https://img.shields.io/badge/Elixir-Support-purple.svg)](https://elixir-lang.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
-[Features](#features) •
 [Installation](#installation) •
-[Usage](#usage) •
-[Documentation](#documentation) •
+[Quick Start](#quick-start) •
+[Configuration](#configuration) •
+[MCP Tools](#mcp-tools) •
 [Contributing](#contributing)
 
 </div>
@@ -27,15 +27,16 @@
 
 ## Overview
 
-CICADA is a Model Context Protocol (MCP) server that provides Claude Code with code intelligence for Elixir projects. It indexes your codebase using tree-sitter AST parsing and provides instant access to modules, functions, call sites, and PR attribution.
+CICADA is a Model Context Protocol (MCP) server that provides AI coding assistants with deep code intelligence for Elixir projects. It indexes your codebase using tree-sitter AST parsing and provides instant access to modules, functions, call sites, and PR attribution.
 
 ### Key Features
 
-- Fast module and function search
-- Call site tracking with line numbers
-- PR attribution via git blame and GitHub CLI
-- Tree-sitter based parsing
-- MCP integration for Claude Code
+- **Fast module and function search** - Find any Elixir module or function instantly
+- **Call site tracking** - See where functions are used with line numbers
+- **Git history & PR attribution** - Find which PR introduced any line of code
+- **PR review comments** - Access historical code review discussions
+- **Tree-sitter parsing** - Accurate AST-based code analysis
+- **MCP integration** - Works with any MCP-compatible AI coding assistant
 
 ---
 
@@ -49,64 +50,151 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # or: brew install uv
 ```
 
-Using [uv](https://github.com/astral-sh/uv) (10-100x faster than pip):
+Using [uv](https://github.com/astral-sh/uv) for the best experience:
 
 ```bash
-# Install and configure in one command
+# Install once (fast, permanent)
+uv tool install git+https://github.com/wende/cicada.git
+
+# Then setup in each project
+cd /path/to/your/elixir/project
+cicada-setup
+```
+
+**Available commands after install:**
+- `cicada-server` - MCP server
+- `cicada-setup` - Project setup
+- `cicada-index` - Elixir code indexer
+- `cicada-pr-indexer` - PR indexer
+
+### Try Before Installing
+
+Test Cicada without installation:
+
+```bash
 cd /path/to/your/elixir/project
 uvx --from git+https://github.com/wende/cicada.git cicada-setup
 ```
 
-Or install as a persistent tool:
-
-```bash
-# Install once
-uv tool install git+https://github.com/wende/cicada.git
-
-# Use in any project
-cd /path/to/elixir/project
-cicada-setup
-```
-
-### Traditional Install
-
-Without uv:
-
-```bash
-cd /path/to/your/elixir/project
-python3 /path/to/cicada/install.py
-```
-
-### Manual Setup
-
-For full control:
-
-```bash
-# Clone the repository
-git clone https://github.com/wende/cicada.git
-cd cicada
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Index your Elixir project
-python -m cicada.indexer /path/to/your/elixir/project
-
-# Configure for Claude Code (see Configuration section)
-```
+**Note:** This works but MCP server startup will be slower and you lose the option to use PR indexing features. Install permanently with `uv tool install` for best performance.
 
 ---
 
 ## Quick Start
 
-After installation, ask Claude Code:
+After installation, ask your AI coding assistant:
 
 ```
 "What functions are in the MyApp.User module?"
 "Show me where authenticate/2 is called"
-"Which PR introduced the Accounts module?"
+"Which PR introduced line 42 of user.ex?"
+"Show me all PRs that modified the User module with their review comments"
 "Find all usages of Repo.insert/2"
+"What's the git history of the authenticate function?"
 ```
+
+**For PR features**, first run:
+```bash
+cicada-pr-indexer .
+```
+
+---
+
+## Configuration
+
+### Automatic Configuration
+
+`cicada-setup` automatically detects how Cicada is installed and generates the optimal `.mcp.json`:
+
+**With `uv tool install` (recommended):**
+```json
+{
+  "mcpServers": {
+    "cicada": {
+      "command": "cicada-server",
+      "env": {"CICADA_REPO_PATH": "/path/to/project"}
+    }
+  }
+}
+```
+✅ Fast startup, no paths, portable!
+
+**With direct Python (fallback):**
+```json
+{
+  "mcpServers": {
+    "cicada": {
+      "command": "/usr/bin/python3",
+      "args": ["/path/to/cicada/cicada/mcp_server.py"],
+      "cwd": "/path/to/cicada",
+      "env": {"CICADA_REPO_PATH": "/path/to/project"}
+    }
+  }
+}
+```
+⚠️ Still works, but slower startup
+
+**Migration tip:** If you have the Python version, run:
+```bash
+uv tool install git+https://github.com/wende/cicada.git
+cicada-setup  # Re-run to get optimized config
+```
+
+### Setup Options
+
+```bash
+# Basic setup (current directory)
+cicada-setup
+
+# Skip dependency installation
+cicada-setup --skip-install
+
+# Specify a different repository path
+cicada-setup /path/to/other/project
+```
+
+**Note:** The `--pr-info` flag has been removed. Use `cicada-pr-indexer` instead:
+```bash
+# After setup, optionally index PRs
+cicada-pr-indexer .
+```
+
+### Re-indexing
+
+After code changes, re-index your project:
+
+```bash
+# Re-index Elixir code
+cicada-index --output .cicada/index.json
+
+# Or re-run full setup (skips install by default)
+cicada-setup --skip-install
+```
+
+### PR Indexing (Optional)
+
+Index pull requests for enhanced git history features:
+
+```bash
+# Full index (first time, requires GitHub CLI)
+cicada-pr-indexer .
+
+# Incremental update (faster, only new PRs)
+cicada-pr-indexer . --incremental
+
+# Find which PR introduced a line
+cicada-pr-finder lib/my_module.ex 42
+
+# Output formats
+cicada-pr-finder lib/my_module.ex 42 --format markdown
+cicada-pr-finder lib/my_module.ex 42 --format json
+```
+
+**Requirements:**
+- GitHub CLI (`gh`) installed and authenticated
+- Run from a GitHub repository
+
+**See also:** [PR Indexing Documentation](docs/PR_INDEXING.md)
 
 ---
 
@@ -301,74 +389,124 @@ URL: https://github.com/org/repo/pull/123
 }
 ```
 
+### `get_file_pr_history`
+Get all pull requests that modified a specific file, with descriptions and review comments.
+
+**Parameters:**
+- `file_path` (string, required): Path to file (relative to repo root or absolute)
+
+**Returns:**
+```markdown
+# Pull Request History for lib/user.ex
+
+Found 3 pull request(s)
+
+## PR #42: Add user authentication
+- **Author:** @wende
+- **Status:** merged
+- **URL:** https://github.com/org/repo/pull/42
+
+### Description
+This PR adds JWT-based authentication to the User module...
+
+### Review Comments (2)
+
+**@reviewer** (Line 58) ✓ Resolved:
+> Consider caching the token validation to avoid redundant DB calls
+
+**@security-team** (Line 92) ✓ Resolved:
+> Make sure we're using constant-time comparison for tokens
+
 ---
 
-## Configuration
+## PR #38: Initial user module
+- **Author:** @contributor
+- **Status:** merged
+- **URL:** https://github.com/org/repo/pull/38
 
-### Project Configuration (`.mcp.json`)
-
-Created automatically by the setup script:
-
-```json
-{
-  "mcpServers": {
-    "cicada": {
-      "command": "python",
-      "args": ["/absolute/path/to/cicada/cicada/mcp_server.py"],
-      "cwd": "/absolute/path/to/cicada"
-    }
-  }
-}
+### Description
+Creates the basic User module structure
 ```
 
-The index path is automatically configured in `.cicada/config.yaml` during setup.
+**Note:** Requires PR index (run `cicada-pr-indexer .` first)
 
-### Setup Options
+### `get_file_history`
+Get commit history for a file or function. Tracks functions even as they move within the file.
 
-```bash
-# Basic setup (current directory is the default)
-cicada-setup
+**Parameters:**
+- `file_path` (string, required): Path to file (relative to repo root)
+- `function_name` (string, optional): Function name to track (e.g., `"create_user"`)
+- `start_line` (integer, optional): Starting line for fallback line-based tracking
+- `end_line` (integer, optional): Ending line for fallback line-based tracking
+- `show_evolution` (boolean, default: `false`): Include creation date and modification stats
+- `max_commits` (integer, default: `10`): Maximum commits to return (1-50)
 
-# Include PR information (requires GitHub CLI)
-cicada-setup --pr-info
+**Note:** Requires `.gitattributes` with `*.ex diff=elixir` (automatically created by setup)
 
-# Skip dependency installation
-cicada-setup --skip-install
+**Returns:**
+```
+# Git History for lib/user.ex (lines 42-58)
 
-# Custom installation directory
-cicada-setup --cicada-dir /custom/path
+## Function Evolution
+- Created: 2024-01-15 by John Doe (commit `abc123de`)
+- Last Modified: 2024-12-20 by Jane Smith (commit `def456ab`)
+- Total Modifications: 8 commit(s)
 
-# Or specify a different repository path
-cicada-setup /path/to/other/project
+Found 5 commit(s)
+
+## 1. Refactor authentication logic
+- Commit: `def456ab`
+- Author: Jane Smith (jane@example.com)
+- Date: 2024-12-20T10:30:00Z
 ```
 
-### Re-indexing
+### `get_function_blame`
+Show line-by-line authorship with grouped consecutive lines by same author.
 
-After code changes, re-index your project:
+**Parameters:**
+- `file_path` (string, required): Path to file (relative to repo root)
+- `start_line` (integer, required): Starting line number
+- `end_line` (integer, required): Ending line number
 
-```bash
-# Quick re-index (uses existing installation)
-cicada-setup --skip-install
+**Returns:**
+```
+# Git Blame for lib/user.ex (lines 42-58)
 
-# Or use the indexer directly
-cicada-index --output .cicada/index.json
+## Group 1: John Doe (lines 42-48)
+- Author: John Doe (john@example.com)
+- Commit: `abc123de`
+- Date: 2024-01-15
+- Lines: 7
+
+Code:
+def create_user(attrs, opts \\ []) do
+  changeset = User.changeset(%User{}, attrs)
+  ...
+end
 ```
 
 ---
 
 ## Roadmap
 
-### v0 (Current) ✅
+### v0.1 (Current) ✅
 - Module and function search
 - Call site tracking with alias resolution
 - PR attribution via git blame + GitHub
+- **PR review comments with line mapping**
+- **File PR history with descriptions**
+- **GraphQL-based PR indexing (30x faster)**
 - Function usage examples with code snippets
+- Git commit history tracking
 - Test file filtering
 - Multiple output formats (markdown, JSON)
+- **Intelligent .mcp.json auto-configuration**
+- **`uv tool install` support**
 
-### v0.1 (Potential Future Enhancements)
+### v0.2 (Potential Future Enhancements)
 - Documentation search in markdown files
-- Extended git commit history integration
+- Incremental code re-indexing
+- PR comment search across repositories
 
 ### Long Term (Stretch Goals)
 - Multi-language support (Python, TypeScript, Rust)
@@ -484,12 +622,13 @@ Use the exact module name as it appears in code (e.g., `MyApp.User`, not `User`)
 1. Verify `.mcp.json` exists in your project root
 2. Check that all paths in `.mcp.json` are absolute
 3. Ensure `index.json` was created successfully
-4. Restart Claude Code
-5. Check Claude Code logs for errors
+4. Restart your MCP client (Claude Code, Cline, etc.)
+5. Check your MCP client logs for errors
 
-### PR Information Not Working
+### PR Features Not Working
 
-PR attribution requires GitHub CLI:
+PR features require the GitHub CLI and a PR index:
+
 ```bash
 # Install GitHub CLI
 brew install gh  # macOS
@@ -498,9 +637,17 @@ brew install gh  # macOS
 # Authenticate
 gh auth login
 
-# Re-run indexer with PR info
-cicada-index --fetch-pr-info
+# Index PRs (first time or after new PRs)
+cicada-pr-indexer .
+
+# Incremental update (faster)
+cicada-pr-indexer . --incremental
 ```
+
+**Common issues:**
+- "No PR index found" → Run `cicada-pr-indexer .`
+- "Not a GitHub repository" → Ensure repo has GitHub remote
+- Slow indexing → Use `--incremental` for updates
 
 #### Uninstall
 
@@ -508,7 +655,7 @@ Remove CICADA from a project:
 
 ```bash
 rm -rf .cicada/ .mcp.json
-# Restart Claude Code
+# Restart your MCP client
 ```
 
 ---

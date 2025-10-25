@@ -111,26 +111,26 @@ def test_get_file_history_function_specific(test_server):
     result = asyncio.run(test_server._get_file_history(
         'cicada/mcp_server.py',
         function_name='__init__',
-        line_number=25,
+        start_line=25,
         max_commits=2
     ))
 
     assert len(result) == 1, "Should return one TextContent"
     text = result[0].text
 
-    # Check that it mentions the function in the title
+    # Check that it mentions the function or file name
     assert '__init__' in text or 'mcp_server.py' in text, "Should mention function or file name"
-    assert 'Git History for' in text, "Should have title"
 
-    # If commits were found, check for relevance indicators
+    # If commits were found, check for proper formatting
     if 'No commit history found' not in text:
+        assert 'Git History for' in text, "Should have title when commits found"
         if 'Relevance:' in text:
             assert ('🎯' in text or '📝' in text), "Should include relevance emoji indicators"
             print("  ✓ Function-specific history with relevance indicators")
         else:
             print("  ✓ Function-specific history retrieved")
     else:
-        print("  ✓ Function history returned (no commits found)")
+        print("  ✓ Function history returned (no commits found for this range)")
 
 
 def test_get_file_history_nonexistent_file(test_server):

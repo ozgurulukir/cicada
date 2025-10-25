@@ -1,5 +1,7 @@
 #!/bin/bash
-# Usage: ./tests/acceptance/search_module.sh ModuleName
+# Usage: ./tests/acceptance/check_moduledoc.sh ModuleName
+#
+# Tests that moduledoc is displayed when searching for modules
 
 MODULE="${1:-AB.Generators}"
 
