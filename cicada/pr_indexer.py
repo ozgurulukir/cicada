@@ -115,13 +115,21 @@ class PRIndexer:
             # Fetch detailed PR info in batches using GraphQL
             detailed_prs = []
             batch_size = 10
+            total_batches = (len(pr_numbers) + batch_size - 1) // batch_size
 
-            for i in range(0, len(pr_numbers), batch_size):
-                batch = pr_numbers[i:i + batch_size]
-                print(f"  Fetching batch {i//batch_size + 1}/{(len(pr_numbers) + batch_size - 1)//batch_size} ({len(batch)} PRs)...")
+            try:
+                for i in range(0, len(pr_numbers), batch_size):
+                    batch = pr_numbers[i:i + batch_size]
+                    print(f"  Fetching batch {i//batch_size + 1}/{total_batches} ({len(batch)} PRs)...")
 
-                batch_prs = self._fetch_prs_batch_graphql(batch)
-                detailed_prs.extend(batch_prs)
+                    batch_prs = self._fetch_prs_batch_graphql(batch)
+                    detailed_prs.extend(batch_prs)
+
+            except KeyboardInterrupt:
+                print(f"\n\n⚠️  Interrupted by user. Fetched {len(detailed_prs)}/{len(pr_numbers)} PRs.")
+                print("Saving partial index...")
+                # Return what we have so far
+                return detailed_prs
 
             return detailed_prs
 
@@ -664,25 +672,32 @@ class PRIndexer:
         mapped_count = 0
         unmapped_count = 0
 
-        for pr in prs:
-            for comment in pr.get("comments", []):
-                original_line = comment.get("original_line")
-                commit_sha = comment.get("commit_sha")
-                file_path = comment.get("path")
+        try:
+            for pr in prs:
+                for comment in pr.get("comments", []):
+                    original_line = comment.get("original_line")
+                    commit_sha = comment.get("commit_sha")
+                    file_path = comment.get("path")
 
-                if original_line and commit_sha and file_path:
-                    current_line = self._map_comment_line_to_current(
-                        file_path, original_line, commit_sha
-                    )
-                    comment["line"] = current_line
+                    if original_line and commit_sha and file_path:
+                        current_line = self._map_comment_line_to_current(
+                            file_path, original_line, commit_sha
+                        )
+                        comment["line"] = current_line
 
-                    if current_line is not None:
-                        mapped_count += 1
+                        if current_line is not None:
+                            mapped_count += 1
+                        else:
+                            unmapped_count += 1
                     else:
+                        comment["line"] = None
                         unmapped_count += 1
-                else:
-                    comment["line"] = None
-                    unmapped_count += 1
+
+        except KeyboardInterrupt:
+            print(f"\n\n⚠️  Line mapping interrupted. Mapped {mapped_count}/{total_comments} comments.")
+            print("Saving index with partial line mappings...")
+            # Re-raise to let the outer handler save the index
+            raise
 
         print(f"  Mapped {mapped_count} comments, {unmapped_count} unmappable/outdated")
 
@@ -778,8 +793,13 @@ def main():
         indexer.index_repository(output_path=args.output, incremental=args.incremental)
 
         print(
-            "\nIndexing complete! You can now use pr_finder.py for fast offline lookups."
+            "\n✅ Indexing complete! You can now use the MCP tools for PR history lookups."
         )
+
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Indexing interrupted by user.")
+        print("Partial index may have been saved. Run again to continue or use --incremental.")
+        sys.exit(130)  # Standard exit code for SIGINT
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
