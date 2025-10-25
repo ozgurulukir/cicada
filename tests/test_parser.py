@@ -95,7 +95,7 @@ def test_return_type_extraction():
 def test_guard_clause_extraction():
     """Test that guard clauses are extracted from function definitions."""
     parser = ElixirParser()
-    result = parser.parse_file('tests/fixtures/elixir_project/test/support/number_functions.ex')
+    result = parser.parse_file('tests/fixtures/test_guard_clauses.ex')
 
     assert result is not None
     module = result[0]

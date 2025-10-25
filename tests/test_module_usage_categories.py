@@ -19,7 +19,7 @@ def test_parser_extracts_all_categories():
     parser = ElixirParser()
 
     # Parse the AB module which has examples of all categories
-    test_file = Path(__file__).parent / "fixtures" / "elixir_project" / "lib" / "ab.ex"
+    test_file = Path(__file__).parent / "fixtures" / "test_module_with_usage_categories.ex"
     modules = parser.parse_file(str(test_file))
 
     assert modules is not None
