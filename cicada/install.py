@@ -215,8 +215,12 @@ def create_mcp_config(repo_path, cicada_dir, python_bin):
 
 
 def create_config_yaml(cicada_dir, repo_path, index_path):
-    """Create or update config.yaml in cicada directory."""
-    config_path = cicada_dir / "config.yaml"
+    """Create or update config.yaml in repository's .cicada directory."""
+    repo_path = Path(repo_path).resolve()
+    config_path = repo_path / ".cicada" / "config.yaml"
+
+    # Ensure .cicada directory exists
+    config_path.parent.mkdir(parents=True, exist_ok=True)
 
     config_content = f"""repository:
   path: {repo_path}
