@@ -26,34 +26,31 @@ async def test_search_function():
 
     print("Testing search_function tool...\n")
 
-    # Test 1: Search for create_user
-    print("=" * 60)
-    print("Test 1: Search for 'create_user'")
-    print("=" * 60)
-    result = await server._search_function("create_user", "markdown")
+    # Test 1: Search for create_user with usage examples
+    print("Test 1: Search for 'create_user' with usage examples")
+    result = await server._search_function(
+        "create_user",
+        "markdown",
+        include_usage_examples=True,
+        max_examples=3
+    )
     print(result[0].text)
     print()
 
     # Test 2: Search for create_user/2 (with arity)
-    print("=" * 60)
     print("Test 2: Search for 'create_user/2'")
-    print("=" * 60)
     result = await server._search_function("create_user/2", "json")
     print(result[0].text)
     print()
 
     # Test 3: Search for find_user
-    print("=" * 60)
     print("Test 3: Search for 'find_user'")
-    print("=" * 60)
     result = await server._search_function("find_user", "markdown")
     print(result[0].text)
     print()
 
     # Test 4: Search for a function that doesn't exist
-    print("=" * 60)
     print("Test 4: Search for non-existent function")
-    print("=" * 60)
     result = await server._search_function("nonexistent_function", "markdown")
     print(result[0].text)
     print()

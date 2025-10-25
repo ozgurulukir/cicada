@@ -252,6 +252,23 @@ def test_format_function_results_markdown_with_consolidated_call_sites():
 
 def test_format_function_results_markdown_with_code_lines():
     """Test that consolidated call sites properly display code examples."""
+    call_sites = [
+        {
+            "calling_module": "MyApp.Caller",
+            "calling_function": {"name": "process", "arity": 1},
+            "file": "lib/my_app/caller.ex",
+            "line": 10,
+            "code_line": "    TargetModule.target_function(data)",
+        },
+        {
+            "calling_module": "MyApp.Caller",
+            "calling_function": {"name": "process", "arity": 1},
+            "file": "lib/my_app/caller.ex",
+            "line": 20,
+            "code_line": "    TargetModule.target_function(other_data)",
+        },
+    ]
+
     results = [
         {
             "module": "MyApp.TargetModule",
@@ -263,22 +280,8 @@ def test_format_function_results_markdown_with_code_lines():
                 "args": ["arg1"],
             },
             "file": "lib/my_app/target_module.ex",
-            "call_sites": [
-                {
-                    "calling_module": "MyApp.Caller",
-                    "calling_function": {"name": "process", "arity": 1},
-                    "file": "lib/my_app/caller.ex",
-                    "line": 10,
-                    "code_line": "    TargetModule.target_function(data)",
-                },
-                {
-                    "calling_module": "MyApp.Caller",
-                    "calling_function": {"name": "process", "arity": 1},
-                    "file": "lib/my_app/caller.ex",
-                    "line": 20,
-                    "code_line": "    TargetModule.target_function(other_data)",
-                },
-            ],
+            "call_sites": call_sites,
+            "call_sites_with_examples": call_sites,  # Both call sites have examples
         }
     ]
 
@@ -297,3 +300,99 @@ def test_format_function_results_markdown_with_code_lines():
         "Expected first code example"
     assert "TargetModule.target_function(other_data)" in markdown, \
         "Expected second code example"
+
+
+def test_format_function_results_markdown_with_additional_call_sites():
+    """Test that when showing code examples, other call sites are also listed."""
+    # Create 5 call sites total
+    all_call_sites = [
+        {
+            "calling_module": "MyApp.Caller1",
+            "calling_function": {"name": "process", "arity": 1},
+            "file": "lib/my_app/caller1.ex",
+            "line": 10,
+            "code_line": "    TargetModule.target_function(data1)",
+        },
+        {
+            "calling_module": "MyApp.Caller2",
+            "calling_function": {"name": "handle", "arity": 2},
+            "file": "lib/my_app/caller2.ex",
+            "line": 20,
+            "code_line": "    TargetModule.target_function(data2)",
+        },
+        {
+            "calling_module": "MyApp.Caller3",
+            "calling_function": {"name": "execute", "arity": 0},
+            "file": "lib/my_app/caller3.ex",
+            "line": 30,
+        },
+        {
+            "calling_module": "MyApp.Caller4",
+            "calling_function": {"name": "run", "arity": 1},
+            "file": "lib/my_app/caller4.ex",
+            "line": 40,
+        },
+        {
+            "calling_module": "MyApp.TestCaller",
+            "calling_function": {"name": "test_function", "arity": 1},
+            "file": "test/my_app/test_caller_test.ex",
+            "line": 50,
+        },
+    ]
+
+    # Only first 2 have code examples
+    call_sites_with_examples = all_call_sites[:2]
+
+    results = [
+        {
+            "module": "MyApp.TargetModule",
+            "function": {
+                "name": "target_function",
+                "arity": 1,
+                "type": "def",
+                "line": 42,
+                "args": ["arg1"],
+            },
+            "file": "lib/my_app/target_module.ex",
+            "call_sites": all_call_sites,
+            "call_sites_with_examples": call_sites_with_examples,
+        }
+    ]
+
+    markdown = ModuleFormatter.format_function_results_markdown(
+        "target_function", results
+    )
+
+    # Should have Usage Examples section with the first 2
+    assert "**Usage Examples:**" in markdown, \
+        "Expected Usage Examples section"
+    assert "TargetModule.target_function(data1)" in markdown, \
+        "Expected first code example"
+    assert "TargetModule.target_function(data2)" in markdown, \
+        "Expected second code example"
+
+    # Should have Other Call Sites section with the remaining 3
+    assert "**Other Call Sites:**" in markdown, \
+        "Expected Other Call Sites section"
+    assert "MyApp.Caller3.execute/0" in markdown, \
+        "Expected Caller3 in other call sites"
+    assert "MyApp.Caller4.run/1" in markdown, \
+        "Expected Caller4 in other call sites"
+    assert "MyApp.TestCaller.test_function/1" in markdown, \
+        "Expected TestCaller in other call sites"
+
+    # Verify that Caller1 and Caller2 are NOT in Other Call Sites
+    # (they should only appear in Usage Examples)
+    lines = markdown.split("\n")
+    other_call_sites_start = None
+    for i, line in enumerate(lines):
+        if "**Other Call Sites:**" in line:
+            other_call_sites_start = i
+            break
+
+    if other_call_sites_start:
+        other_call_sites_section = "\n".join(lines[other_call_sites_start:])
+        assert "MyApp.Caller1.process/1" not in other_call_sites_section, \
+            "Caller1 should not appear in Other Call Sites (only in Usage Examples)"
+        assert "MyApp.Caller2.handle/2" not in other_call_sites_section, \
+            "Caller2 should not appear in Other Call Sites (only in Usage Examples)"

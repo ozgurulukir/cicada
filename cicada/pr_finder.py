@@ -43,11 +43,9 @@ class PRFinder:
             self.index = self._load_index()
             if self.index and self.verbose:
                 print(f"Loaded PR index with {self.index['metadata']['total_prs']} PRs")
-            elif not self.index and self.verbose:
-                print("Warning: PR index not found. Will fall back to network lookups.")
-                print(
-                    f"Run 'python cicada/pr_indexer.py --repo {repo_path}' to create an index."
-                )
+            elif not self.index:
+                # Always show warning (even in non-verbose mode) with color
+                print(f"\033[33m⚠️  No PR index found - using slower network lookups. Create index: python cicada/pr_indexer.py --repo {repo_path}\033[0m", file=sys.stderr)
 
         # Only validate gh CLI if we might need it (no index or index disabled)
         if not self.use_index or not self.index:

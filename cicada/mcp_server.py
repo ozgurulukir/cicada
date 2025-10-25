@@ -59,10 +59,23 @@ class CicadaServer:
             Tool(
                 name="search_module",
                 description=(
-                    "PREFERRED for Elixir code: Semantic search for modules by name or file path. "
-                    "Returns structured data with all functions, signatures, typespecs, arguments, and line numbers. "
-                    "Use this instead of grep/glob for finding Elixir modules. "
-                    "Supports 'MyApp.User' or 'lib/my_app/user.ex' formats."
+                    "PREFERRED for Elixir code: Search for a module to see its complete API.\n\n"
+                    "## When to use\n"
+                    "- Learning what functions a module provides\n"
+                    "- Understanding module structure and public API\n"
+                    "- Checking function signatures and typespecs\n\n"
+                    "## How to use\n"
+                    "1. Basic search by module name: module_name='MyApp.User'\n"
+                    "2. Search by file path: file_path='lib/my_app/user.ex'\n"
+                    "3. Include private functions: private_functions='include'\n"
+                    "4. Show only private functions: private_functions='only'\n\n"
+                    "## Output includes\n"
+                    "- All function names with arity (e.g., create_user/2)\n"
+                    "- Function signatures with argument names\n"
+                    "- Documentation strings\n"
+                    "- Typespecs (@spec declarations)\n"
+                    "- Line numbers for navigation\n\n"
+                    "Default: Returns public functions only in markdown format. Use this as your first step when exploring a module."
                 ),
                 inputSchema={
                     "type": "object",
@@ -94,10 +107,23 @@ class CicadaServer:
             Tool(
                 name="search_function",
                 description=(
-                    "PREFERRED for Elixir code: Semantic search for functions with arity-aware matching. "
-                    "Returns structured data with docs, signatures, typespecs, and all call sites. "
-                    "Use this instead of grep for finding Elixir functions. "
-                    "Supports 'func_name', 'func_name/2', 'Module.func_name', or 'Module.func_name/2' formats."
+                    "PREFERRED for Elixir code: Find function definitions and see where they're called.\n\n"
+                    "## When to use\n"
+                    "- Finding where a function is defined\n"
+                    "- Learning how a function is used across the codebase\n"
+                    "- Understanding function behavior from usage patterns\n\n"
+                    "## How to use\n"
+                    "1. Find all functions named 'create_user': function_name='create_user'\n"
+                    "2. Find specific arity: function_name='create_user/2'\n"
+                    "3. Search in specific module: function_name='MyApp.User.create_user'\n"
+                    "4. See actual code examples: include_usage_examples=true, max_examples=3\n"
+                    "5. Filter to test usage only: test_files_only=true\n\n"
+                    "## Output includes\n"
+                    "- Function definition with full signature\n"
+                    "- Documentation and typespecs\n"
+                    "- List of call sites (module, function, line number)\n"
+                    "- Optional: actual code lines showing usage\n\n"
+                    "Tip: Start without include_usage_examples to get a quick overview, then enable it to see real usage patterns."
                 ),
                 inputSchema={
                     "type": "object",
@@ -136,9 +162,22 @@ class CicadaServer:
             Tool(
                 name="search_module_usage",
                 description=(
-                    "PREFERRED for Elixir code: Find all usages of a module including aliases, imports, and function calls. "
-                    "Returns structured data showing where the module is imported and all call locations. "
-                    "Use this instead of grep for tracking Elixir module usage."
+                    "PREFERRED for Elixir code: Find everywhere a module is used in the codebase.\n\n"
+                    "## When to use\n"
+                    "- Understanding module dependencies\n"
+                    "- Finding which modules import/alias a specific module\n"
+                    "- Seeing all function calls to a module\n"
+                    "- Impact analysis before refactoring\n\n"
+                    "## How to use\n"
+                    "Simply provide the full module name: module_name='MyApp.User'\n\n"
+                    "## Output includes\n"
+                    "- Aliases: Modules that alias this module (e.g., 'alias MyApp.User')\n"
+                    "- Imports: Modules that import this module\n"
+                    "- Requires: Modules that require this module\n"
+                    "- Uses: Modules that use this module\n"
+                    "- Function calls: Which functions are called and from where\n"
+                    "- Line numbers: Exact locations for all usages\n\n"
+                    "Use this to understand the full scope of a module's impact before making changes."
                 ),
                 inputSchema={
                     "type": "object",
@@ -160,9 +199,23 @@ class CicadaServer:
             Tool(
                 name="find_pr_for_line",
                 description=(
-                    "PREFERRED for git history: Find the PR that introduced a specific line of code. "
-                    "Returns commit info, author details, and PR metadata with fast cached lookups. "
-                    "Use this instead of git blame for understanding code history context."
+                    "PREFERRED for git history: Discover why a line of code exists and who wrote it.\n\n"
+                    "## When to use\n"
+                    "- Understanding the context behind code\n"
+                    "- Finding the PR discussion for a piece of code\n"
+                    "- Identifying who to ask about specific code\n"
+                    "- Learning why code was written a certain way\n\n"
+                    "## How to use\n"
+                    "1. Basic lookup: file_path='lib/my_app/user.ex', line_number=42\n"
+                    "2. Get structured data: format='json'\n"
+                    "3. For reports: format='markdown'\n\n"
+                    "## Output includes\n"
+                    "- PR number and title\n"
+                    "- Author name and email\n"
+                    "- Commit SHA and message\n"
+                    "- Date of change\n"
+                    "- Link to PR (if available)\n\n"
+                    "Uses cached lookups for fast performance. Better than git blame because it shows the full PR context, not just the commit."
                 ),
                 inputSchema={
                     "type": "object",
@@ -361,28 +414,24 @@ class CicadaServer:
                             call_sites = self._filter_test_call_sites(call_sites)
 
                         # Optionally include usage examples (actual code lines)
+                        call_sites_with_examples = []
                         if include_usage_examples and call_sites:
                             # Consolidate call sites by calling module (one example per module)
                             consolidated_sites = self._consolidate_call_sites_by_module(
                                 call_sites
                             )
                             # Limit the number of examples
-                            limited_call_sites = consolidated_sites[:max_examples]
+                            call_sites_with_examples = consolidated_sites[:max_examples]
                             # Extract code lines for each call site
-                            self._add_code_examples(limited_call_sites)
-                        else:
-                            limited_call_sites = call_sites
+                            self._add_code_examples(call_sites_with_examples)
 
                         results.append(
                             {
                                 "module": module_name,
                                 "function": func,
                                 "file": module_data["file"],
-                                "call_sites": (
-                                    limited_call_sites
-                                    if include_usage_examples
-                                    else call_sites
-                                ),
+                                "call_sites": call_sites,
+                                "call_sites_with_examples": call_sites_with_examples,
                             }
                         )
 
@@ -570,50 +619,51 @@ class CicadaServer:
 
     def _extract_complete_call(self, lines: list[str], start_line: int) -> str | None:
         """
-        Extract a complete function call starting from the given line.
+        Extract code with ±2 lines of context around the call line.
 
         Args:
             lines: All lines from the file
             start_line: Line number where the call starts (1-indexed)
 
         Returns:
-            Complete function call as a string, or None if extraction fails
+            Code snippet with context, dedented to remove common leading whitespace
         """
         if start_line < 1 or start_line > len(lines):
             return None
 
-        # Start from the line where the call occurs (convert to 0-indexed)
-        start_idx = start_line - 1
+        # Convert to 0-indexed
+        call_idx = start_line - 1
 
-        # Collect lines for the complete call
-        collected_lines = []
-        paren_count = 0
-        found_opening = False
+        # Calculate context range (±2 lines)
+        context_lines = 2
+        start_idx = max(0, call_idx - context_lines)
+        end_idx = min(len(lines), call_idx + context_lines + 1)
 
-        # Read lines starting from the call line
-        for i in range(start_idx, len(lines)):
-            line = lines[i].rstrip("\n")
-            collected_lines.append(line)
+        # Extract the lines with context
+        extracted_lines = []
+        for i in range(start_idx, end_idx):
+            extracted_lines.append(lines[i].rstrip("\n"))
 
-            # Count parentheses to find the complete call
-            for char in line:
-                if char == "(":
-                    paren_count += 1
-                    found_opening = True
-                elif char == ")":
-                    paren_count -= 1
+        # Dedent: strip common leading whitespace
+        if extracted_lines:
+            # Find minimum indentation (excluding empty/whitespace-only lines)
+            min_indent = float('inf')
+            for line in extracted_lines:
+                if line.strip():  # Skip empty/whitespace-only lines
+                    leading_spaces = len(line) - len(line.lstrip())
+                    min_indent = min(min_indent, leading_spaces)
 
-            # If we found an opening paren and count is back to 0, we have the complete call
-            if found_opening and paren_count == 0:
-                # Join the lines and return
-                return "\n".join(collected_lines)
+            # Strip the common indentation from all lines
+            if min_indent != float('inf') and min_indent > 0:
+                dedented_lines = []
+                for line in extracted_lines:
+                    if len(line) >= min_indent:
+                        dedented_lines.append(line[min_indent:])
+                    else:
+                        dedented_lines.append(line)
+                extracted_lines = dedented_lines
 
-            # Safety limit: don't read more than 20 lines for a single call
-            if len(collected_lines) >= 20:
-                break
-
-        # If we couldn't find a complete call, return what we have
-        return "\n".join(collected_lines) if collected_lines else None
+        return "\n".join(extracted_lines) if extracted_lines else None
 
     def _find_call_sites(
         self, target_module: str, target_function: str, target_arity: int

@@ -282,7 +282,7 @@ class ElixirParser:
             self._find_specs_recursive(child, source_code, specs)
 
     def _parse_spec(self, spec_node, source_code: bytes) -> dict | None:
-        """Parse a @spec attribute to extract function name, arity, and parameter types."""
+        """Parse a @spec attribute to extract function name, arity, parameter types, and return type."""
         # @spec is represented as: spec(function_signature)
         # We need to find the arguments node and parse the typespec
 
@@ -293,11 +293,20 @@ class ElixirParser:
                     if arg.type == "binary_operator":
                         # This is the :: operator separating params from return type
                         # Left side has the function call with params
+                        # Right side has the return type
                         func_call = None
+                        return_type = None
+                        found_call = False
+
                         for op_child in arg.children:
                             if op_child.type == "call":
                                 func_call = op_child
-                                break
+                                found_call = True
+                            elif found_call and op_child.type not in ["::", "operator"]:
+                                # This is the return type node (after :: operator)
+                                return_type = source_code[
+                                    op_child.start_byte : op_child.end_byte
+                                ].decode("utf-8")
 
                         if func_call:
                             func_name = None
@@ -318,6 +327,7 @@ class ElixirParser:
                                     "name": func_name,
                                     "arity": len(param_types),
                                     "param_types": param_types,
+                                    "return_type": return_type,
                                 }
 
         return None
@@ -337,7 +347,7 @@ class ElixirParser:
         return param_types
 
     def _match_specs_to_functions(self, functions: list, specs: dict) -> list:
-        """Match specs with functions and add type information to function args."""
+        """Match specs with functions and add type information to function args and return type."""
         for func in functions:
             key = f"{func['name']}/{func['arity']}"
             if key in specs:
@@ -354,6 +364,10 @@ class ElixirParser:
                         else:
                             args_with_types.append({"name": arg_name, "type": None})
                     func["args_with_types"] = args_with_types
+
+                # Add return type from spec
+                if "return_type" in spec and spec["return_type"]:
+                    func["return_type"] = spec["return_type"]
 
         return functions
 
@@ -464,15 +478,17 @@ class ElixirParser:
     def _parse_function_definition(
         self, arguments_node, source_code: bytes, func_type: str, line: int
     ) -> dict:
-        """Parse a function definition to extract name, arity, and argument names."""
+        """Parse a function definition to extract name, arity, argument names, and guards."""
         func_name = None
         arity = 0
         arg_names = []
+        guards = []
 
         for arg_child in arguments_node.children:
             # The function signature can be either:
             # 1. A call node (function with params): func_name(param1, param2)
             # 2. An identifier (function with no params): func_name
+            # 3. A binary_operator (when guards are present): func_name(params) when guard
             if arg_child.type == "call":
                 # Extract function name from call target
                 for call_child in arg_child.children:
@@ -486,6 +502,24 @@ class ElixirParser:
                         )
                         arity = len(arg_names)
                 break
+            elif arg_child.type == "binary_operator":
+                # This handles guards: func_name(params) when guard_expr
+                # The binary_operator contains the call as its first child
+                for op_child in arg_child.children:
+                    if op_child.type == "call":
+                        # Extract function name and args from the call
+                        for call_child in op_child.children:
+                            if call_child.type == "identifier":
+                                func_name = source_code[
+                                    call_child.start_byte : call_child.end_byte
+                                ].decode("utf-8")
+                            elif call_child.type == "arguments":
+                                arg_names = self._extract_argument_names(
+                                    call_child, source_code
+                                )
+                                arity = len(arg_names)
+                        break
+                break
             elif arg_child.type == "identifier":
                 func_name = source_code[
                     arg_child.start_byte : arg_child.end_byte
@@ -494,11 +528,15 @@ class ElixirParser:
                 arg_names = []
                 break
 
+        # Extract guard clauses
+        guards = self._extract_guards(arguments_node, source_code)
+
         if func_name:
             return {
                 "name": func_name,
                 "arity": arity,
                 "args": arg_names,
+                "guards": guards,
                 "full_name": f"{func_name}/{arity}",
                 "line": line,
                 "signature": f"{func_type} {func_name}",
@@ -506,6 +544,42 @@ class ElixirParser:
             }
 
         return None
+
+    def _extract_guards(self, arguments_node, source_code: bytes) -> list[str]:
+        """
+        Extract guard clauses from function definition arguments.
+
+        Example:
+            def abs_value(n) when n < 0, do: -n
+            Returns: ["n < 0"]
+
+        Tree structure:
+            arguments:
+              binary_operator:  # This contains function_call WHEN guard_expr
+                call: abs_value(n)
+                when: 'when'
+                binary_operator: n < 0  # This is the guard expression
+        """
+        guards = []
+
+        for arg_child in arguments_node.children:
+            # Guards appear as binary_operator nodes containing 'when'
+            if arg_child.type == "binary_operator":
+                # Look for 'when' keyword and the guard expression after it
+                has_when = False
+                guard_node = None
+
+                for op_child in arg_child.children:
+                    if op_child.type == "when":
+                        has_when = True
+                    elif has_when:
+                        # This is the guard expression node (comes after 'when')
+                        # It's typically a binary_operator (like n < 0)
+                        guard_expr = source_code[op_child.start_byte:op_child.end_byte].decode("utf-8")
+                        guards.append(guard_expr)
+                        break
+
+        return guards
 
     def _extract_argument_names(self, params_node, source_code: bytes) -> list[str]:
         """Extract parameter names from function arguments."""
