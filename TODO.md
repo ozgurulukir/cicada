@@ -1,8 +1,20 @@
 # CICADA v0.1 TODO List
 
-**Status:** v0 Complete ✅ | v0.1 Planning Phase
+**Status:** v0.1.0 Released ✅ (October 25, 2025)
 **Last Updated:** October 25, 2025
 **Philosophy:** Maintain simplicity, avoid feature creep, deliver real user value
+
+## v0.1.0 Release Summary
+
+**Released:** October 25, 2025
+
+The v0.1.0 release includes:
+- ✅ Git History Enhancements (precise function tracking, evolution metadata, git blame)
+- ✅ Comprehensive test coverage (26 tests total)
+- ✅ Automatic version update checking
+- ✅ All core functionality from v0
+
+See [README.md](README.md) for complete feature list.
 
 ---
 
@@ -106,7 +118,7 @@ The User module provides authentication via `User.authenticate/2`...
 
 ## 2. Git History Enhancements
 
-**Status:** COMPLETED ✅ (December 2025)
+**Status:** COMPLETED ✅ (October 2025)
 
 **What was implemented:**
 - Precise function history tracking using `git log -L` for exact line-range changes
@@ -576,21 +588,21 @@ Current: lib/my_app/accounts/user.ex
 
 ## Success Criteria for v0.1 Release
 
-### Must Have
-- ✅ Documentation indexing and search working
-- ✅ Robust error handling with helpful messages
-- ✅ Index validation and repair functionality
-- ✅ All tests passing
+### Completed in v0.1.0 ✅
+- ✅ Git commit history integration with precise function tracking
+- ✅ Function evolution metadata (creation, modifications, frequency)
+- ✅ Git blame integration with line-by-line authorship
+- ✅ Comprehensive test coverage (26 tests)
+- ✅ Automatic version update checking
 - ✅ Documentation updated
 
-### Should Have
-- ✅ Git commit history integration
-- ✅ Incremental re-indexing
-- ✅ Logging and debug mode
-- ✅ Better type formatting
-
-### Nice to Have
-- Function evolution tracking
+### Deferred to v0.2+
+- Documentation indexing and search
+- Incremental code re-indexing
+- Robust error handling enhancements
+- Index validation and repair functionality
+- Logging and debug mode improvements
+- Better type formatting
 - Watch mode for development
 - Terminal UI improvements
 

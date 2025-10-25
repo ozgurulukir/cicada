@@ -64,8 +64,8 @@ cicada
 **Available commands after install:**
 - `cicada-server` - MCP server
 - `cicada` - Project setup
-- `cicada-index` - Elixir code indexer
-- `cicada-index-pr` - PR indexer
+- `cicada-index` - Elixir code indexer (checks for updates)
+- `cicada-index-pr` - PR indexer (checks for updates)
 
 ### Try Before Installing
 
@@ -482,24 +482,26 @@ end
 
 ## Roadmap
 
-### v0.1 (Current) ✅
+### v0.1.0 (Released - October 2025) ✅
 - Module and function search
 - Call site tracking with alias resolution
 - PR attribution via git blame + GitHub
-- **PR review comments with line mapping**
-- **File PR history with descriptions**
-- **GraphQL-based PR indexing (30x faster)**
+- PR review comments with line mapping
+- File PR history with descriptions
+- GraphQL-based PR indexing (30x faster)
 - Function usage examples with code snippets
-- Git commit history tracking
+- Git commit history tracking with precise function tracking
+- Function evolution metadata (creation, modifications, frequency)
+- Git blame integration with line-by-line authorship
 - Test file filtering
 - Multiple output formats (markdown, JSON)
-- **Intelligent .mcp.json auto-configuration**
-- **`uv tool install` support**
+- Intelligent .mcp.json auto-configuration
+- `uv tool install` support
+- **Automatic version update checking** - Notifies users when newer versions are available
 
 ### v0.2 (Potential Future Enhancements)
 - Documentation search in markdown files
 - Incremental code re-indexing
-- PR comment search across repositories
 
 ### Long Term (Stretch Goals)
 - Multi-language support (Python, TypeScript, Rust)
