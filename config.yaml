@@ -1,5 +1,0 @@
-repository:
-  path: .
-
-storage:
-  index_path: /Users/wende/projects/cicada/.cicada/index.json

@@ -42,5 +42,9 @@ ENV/
 # mypy
 .mypy_cache/
 
-# Cicada data
+# Cicada data and generated files
 data/
+.cicada/
+.mcp.json
+config.yaml
+test_config.yaml
