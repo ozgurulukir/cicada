@@ -73,13 +73,14 @@ class ModuleFormatter:
         return grouped
 
     @staticmethod
-    def format_module_markdown(module_name: str, data: Dict[str, Any]) -> str:
+    def format_module_markdown(module_name: str, data: Dict[str, Any], private_functions: str = "exclude") -> str:
         """
         Format module data as Markdown.
 
         Args:
             module_name: The name of the module
             data: The module data dictionary from the index
+            private_functions: How to handle private functions: 'exclude' (hide), 'include' (show all), or 'only' (show only private)
 
         Returns:
             Formatted Markdown string
@@ -112,7 +113,8 @@ class ModuleFormatter:
                 first_para = first_para[:200] + "..."
             lines.extend(["", first_para])
 
-        if public_grouped:
+        # Show public functions (unless private_functions == "only")
+        if public_grouped and private_functions != "only":
             lines.extend(["", "Public:", ""])
             for (name, arity), clauses in sorted(public_grouped.items()):
                 # Use the first clause for display (they all have same name/arity)
@@ -120,7 +122,8 @@ class ModuleFormatter:
                 func_sig = ModuleFormatter._format_function_signature(func)
                 lines.append(f"{func_sig} — :{func['line']}")
 
-        if private_grouped:
+        # Show private functions (if private_functions == "include" or "only")
+        if private_grouped and private_functions in ["include", "only"]:
             lines.extend(["", "Private:", ""])
             for (name, arity), clauses in sorted(private_grouped.items()):
                 # Use the first clause for display (they all have same name/arity)
@@ -128,26 +131,46 @@ class ModuleFormatter:
                 func_sig = ModuleFormatter._format_function_signature(func)
                 lines.append(f"{func_sig} — :{func['line']}")
 
-        if not data["functions"]:
-            lines.extend(["", "*No functions found*"])
+        # Check if there are no functions to display based on the filter
+        has_functions_to_show = (
+            (private_functions != "only" and public_grouped) or
+            (private_functions in ["include", "only"] and private_grouped)
+        )
+
+        if not has_functions_to_show:
+            if private_functions == "only" and not private_grouped:
+                lines.extend(["", "*No private functions found*"])
+            elif not data["functions"]:
+                lines.extend(["", "*No functions found*"])
 
         return "\n".join(lines)
 
     @staticmethod
-    def format_module_json(module_name: str, data: Dict[str, Any]) -> str:
+    def format_module_json(module_name: str, data: Dict[str, Any], private_functions: str = "exclude") -> str:
         """
         Format module data as JSON.
 
         Args:
             module_name: The name of the module
             data: The module data dictionary from the index
+            private_functions: How to handle private functions: 'exclude' (hide), 'include' (show all), or 'only' (show only private)
 
         Returns:
             Formatted JSON string
         """
+        # Filter functions based on private_functions parameter
+        if private_functions == "exclude":
+            # Only public functions
+            filtered_funcs = [f for f in data["functions"] if f["type"] == "def"]
+        elif private_functions == "only":
+            # Only private functions
+            filtered_funcs = [f for f in data["functions"] if f["type"] == "defp"]
+        else:  # "include"
+            # All functions
+            filtered_funcs = data["functions"]
+
         # Group functions by name/arity to deduplicate function clauses
-        all_funcs = data["functions"]
-        grouped = ModuleFormatter._group_functions_by_name_arity(all_funcs)
+        grouped = ModuleFormatter._group_functions_by_name_arity(filtered_funcs)
 
         # Compact function format - one entry per unique name/arity
         functions = [
@@ -448,20 +471,24 @@ No functions matching `{function_name}` were found in the index.
 
         Args:
             module_name: The module being searched for
-            usage_results: Dictionary with 'imports' and 'function_calls' keys
+            usage_results: Dictionary with usage category keys
 
         Returns:
             Formatted Markdown string
         """
+        aliases = usage_results.get("aliases", [])
         imports = usage_results.get("imports", [])
+        requires = usage_results.get("requires", [])
+        uses = usage_results.get("uses", [])
+        value_mentions = usage_results.get("value_mentions", [])
         function_calls = usage_results.get("function_calls", [])
 
         lines = [f"# Usage of `{module_name}`", ""]
 
-        # Show imports section
-        if imports:
-            lines.extend([f"## Imported by {len(imports)} module(s):", ""])
-            for imp in imports:
+        # Show aliases section
+        if aliases:
+            lines.extend([f"## Aliases ({len(aliases)} module(s)):", ""])
+            for imp in aliases:
                 alias_info = (
                     f" as `{imp['alias_name']}`"
                     if imp["alias_name"] != module_name.split(".")[-1]
@@ -471,8 +498,42 @@ No functions matching `{function_name}` were found in the index.
                     f"- `{imp['importing_module']}` {alias_info} — `{imp['file']}`"
                 )
             lines.append("")
-        else:
-            lines.extend(["## Imports:", "", "*No modules import this module*", ""])
+
+        # Show imports section
+        if imports:
+            lines.extend([f"## Imports ({len(imports)} module(s)):", ""])
+            for imp in imports:
+                lines.append(
+                    f"- `{imp['importing_module']}` — `{imp['file']}`"
+                )
+            lines.append("")
+
+        # Show requires section
+        if requires:
+            lines.extend([f"## Requires ({len(requires)} module(s)):", ""])
+            for req in requires:
+                lines.append(
+                    f"- `{req['importing_module']}` — `{req['file']}`"
+                )
+            lines.append("")
+
+        # Show uses section
+        if uses:
+            lines.extend([f"## Uses ({len(uses)} module(s)):", ""])
+            for use in uses:
+                lines.append(
+                    f"- `{use['importing_module']}` — `{use['file']}`"
+                )
+            lines.append("")
+
+        # Show value mentions section
+        if value_mentions:
+            lines.extend([f"## As Value ({len(value_mentions)} module(s)):", ""])
+            for vm in value_mentions:
+                lines.append(
+                    f"- `{vm['importing_module']}` — `{vm['file']}`"
+                )
+            lines.append("")
 
         # Show function calls section
         if function_calls:
@@ -480,7 +541,7 @@ No functions matching `{function_name}` were found in the index.
             total_calls = sum(len(fc["calls"]) for fc in function_calls)
             lines.extend(
                 [
-                    f"## Called by {len(function_calls)} module(s) ({total_calls} function(s)):",
+                    f"## Function Calls ({len(function_calls)} module(s), {total_calls} function(s)):",
                     "",
                 ]
             )
@@ -501,10 +562,10 @@ No functions matching `{function_name}` were found in the index.
                     )
 
                 lines.append("")
-        else:
-            lines.extend(
-                ["## Function Calls:", "", "*No modules call functions from this module*"]
-            )
+
+        # Show message if no usage found at all
+        if not any([aliases, imports, requires, uses, value_mentions, function_calls]):
+            lines.extend(["*No usage found for this module*"])
 
         return "\n".join(lines)
 
@@ -517,17 +578,25 @@ No functions matching `{function_name}` were found in the index.
 
         Args:
             module_name: The module being searched for
-            usage_results: Dictionary with 'imports' and 'function_calls' keys
+            usage_results: Dictionary with usage category keys
 
         Returns:
             Formatted JSON string
         """
         output = {
             "module": module_name,
+            "aliases": usage_results.get("aliases", []),
             "imports": usage_results.get("imports", []),
+            "requires": usage_results.get("requires", []),
+            "uses": usage_results.get("uses", []),
+            "value_mentions": usage_results.get("value_mentions", []),
             "function_calls": usage_results.get("function_calls", []),
             "summary": {
+                "aliased_by": len(usage_results.get("aliases", [])),
                 "imported_by": len(usage_results.get("imports", [])),
+                "required_by": len(usage_results.get("requires", [])),
+                "used_by": len(usage_results.get("uses", [])),
+                "mentioned_as_value_by": len(usage_results.get("value_mentions", [])),
                 "called_by": len(usage_results.get("function_calls", [])),
             },
         }

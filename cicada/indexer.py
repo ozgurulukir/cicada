@@ -106,6 +106,10 @@ class ElixirIndexer:
                             "public_functions": public_count,
                             "private_functions": private_count,
                             "aliases": module_data.get("aliases", {}),
+                            "imports": module_data.get("imports", []),
+                            "requires": module_data.get("requires", []),
+                            "uses": module_data.get("uses", []),
+                            "value_mentions": module_data.get("value_mentions", []),
                             "calls": module_data.get("calls", []),
                         }
 

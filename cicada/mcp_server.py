@@ -81,6 +81,12 @@ class CicadaServer:
                             "enum": ["markdown", "json"],
                             "default": "markdown",
                         },
+                        "private_functions": {
+                            "type": "string",
+                            "description": "How to handle private functions: 'exclude' (default, hide private functions), 'include' (show all functions), or 'only' (show only private functions)",
+                            "enum": ["exclude", "include", "only"],
+                            "default": "exclude",
+                        },
                     },
                     "required": [],
                 },
@@ -188,6 +194,7 @@ class CicadaServer:
             module_name = arguments.get("module_name")
             file_path = arguments.get("file_path")
             output_format = arguments.get("format", "markdown")
+            private_functions = arguments.get("private_functions", "exclude")
 
             # Validate that at least one is provided
             if not module_name and not file_path:
@@ -201,7 +208,7 @@ class CicadaServer:
                     error_msg = f"Could not find module in file: {file_path}"
                     return [TextContent(type="text", text=error_msg)]
 
-            return await self._search_module(module_name, output_format)
+            return await self._search_module(module_name, output_format, private_functions)
         elif name == "search_function":
             function_name = arguments.get("function_name")
             output_format = arguments.get("format", "markdown")
@@ -272,7 +279,7 @@ class CicadaServer:
         return None
 
     async def _search_module(
-        self, module_name: str, output_format: str = "markdown"
+        self, module_name: str, output_format: str = "markdown", private_functions: str = "exclude"
     ) -> list[TextContent]:
         """Search for a module and return its information."""
         # Exact match lookup
@@ -280,9 +287,9 @@ class CicadaServer:
             data = self.index["modules"][module_name]
 
             if output_format == "json":
-                result = ModuleFormatter.format_module_json(module_name, data)
+                result = ModuleFormatter.format_module_json(module_name, data, private_functions)
             else:
-                result = ModuleFormatter.format_module_markdown(module_name, data)
+                result = ModuleFormatter.format_module_markdown(module_name, data, private_functions)
 
             return [TextContent(type="text", text=result)]
 
@@ -410,7 +417,11 @@ class CicadaServer:
             return [TextContent(type="text", text=error_msg)]
 
         usage_results = {
-            "imports": [],  # Modules that alias/import the target module
+            "aliases": [],  # Modules that alias the target module
+            "imports": [],  # Modules that import the target module
+            "requires": [],  # Modules that require the target module
+            "uses": [],  # Modules that use the target module
+            "value_mentions": [],  # Modules that mention the target as a value
             "function_calls": [],  # Direct function calls to the target module
         }
 
@@ -420,11 +431,11 @@ class CicadaServer:
             if caller_module == module_name:
                 continue
 
-            # Check aliases for imports
+            # Check aliases
             aliases = module_data.get("aliases", {})
             for alias_name, full_module in aliases.items():
                 if full_module == module_name:
-                    usage_results["imports"].append(
+                    usage_results["aliases"].append(
                         {
                             "importing_module": caller_module,
                             "alias_name": alias_name,
@@ -432,6 +443,46 @@ class CicadaServer:
                             "file": module_data["file"],
                         }
                     )
+
+            # Check imports
+            imports = module_data.get("imports", [])
+            if module_name in imports:
+                usage_results["imports"].append(
+                    {
+                        "importing_module": caller_module,
+                        "file": module_data["file"],
+                    }
+                )
+
+            # Check requires
+            requires = module_data.get("requires", [])
+            if module_name in requires:
+                usage_results["requires"].append(
+                    {
+                        "importing_module": caller_module,
+                        "file": module_data["file"],
+                    }
+                )
+
+            # Check uses
+            uses = module_data.get("uses", [])
+            if module_name in uses:
+                usage_results["uses"].append(
+                    {
+                        "importing_module": caller_module,
+                        "file": module_data["file"],
+                    }
+                )
+
+            # Check value mentions
+            value_mentions = module_data.get("value_mentions", [])
+            if module_name in value_mentions:
+                usage_results["value_mentions"].append(
+                    {
+                        "importing_module": caller_module,
+                        "file": module_data["file"],
+                    }
+                )
 
             # Check function calls
             calls = module_data.get("calls", [])

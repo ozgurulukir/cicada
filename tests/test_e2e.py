@@ -59,8 +59,6 @@ def test_indexer():
     print(f"  ✓ Found {len(index['modules'])} module(s)")
     print(f"  ✓ Total functions: {index['metadata']['total_functions']}")
 
-    return output_path
-
 
 def test_mcp_server_initialization(index_path):
     """Test that the MCP server can initialize and load the index."""
@@ -133,7 +131,8 @@ if __name__ == '__main__':
 
     try:
         # Test indexer
-        index_path = test_indexer()
+        test_indexer()
+        index_path = 'data/test_e2e_index.json'
 
         # Test MCP server
         test_mcp_server_initialization(index_path)

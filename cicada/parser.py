@@ -100,8 +100,12 @@ class ElixirParser:
                             functions, specs
                         )
 
-                        # Extract aliases and function calls
+                        # Extract aliases, imports, requires, uses, value mentions, and function calls
                         aliases = self._extract_aliases(do_block, source_code)
+                        imports = self._extract_imports(do_block, source_code)
+                        requires = self._extract_requires(do_block, source_code)
+                        uses = self._extract_uses(do_block, source_code)
+                        value_mentions = self._extract_value_mentions(do_block, source_code)
                         function_calls = self._extract_function_calls(
                             do_block, source_code
                         )
@@ -112,6 +116,10 @@ class ElixirParser:
                             "moduledoc": self._extract_moduledoc(do_block, source_code),
                             "functions": functions_with_specs,
                             "aliases": aliases,
+                            "imports": imports,
+                            "requires": requires,
+                            "uses": uses,
+                            "value_mentions": value_mentions,
                             "calls": function_calls,
                         }
                         modules.append(module_info)
@@ -686,6 +694,206 @@ class ElixirParser:
                                     break
 
         return result if result else None
+
+    def _extract_imports(self, node, source_code: bytes) -> list:
+        """Extract all import declarations from a module body."""
+        imports = []
+        self._find_imports_recursive(node, source_code, imports)
+        return imports
+
+    def _find_imports_recursive(self, node, source_code: bytes, imports: list):
+        """Recursively find import declarations."""
+        if node.type == "call":
+            target = None
+            arguments = None
+
+            for child in node.children:
+                if child.type == "identifier":
+                    target = child
+                elif child.type == "arguments":
+                    arguments = child
+
+            if target and arguments:
+                target_text = source_code[target.start_byte : target.end_byte].decode(
+                    "utf-8"
+                )
+
+                if target_text == "import":
+                    # Parse the import - imports are simpler than aliases
+                    # import MyModule or import MyModule, only: [func: 1]
+                    for arg_child in arguments.children:
+                        if arg_child.type == "alias":
+                            module_name = source_code[
+                                arg_child.start_byte : arg_child.end_byte
+                            ].decode("utf-8")
+                            imports.append(module_name)
+
+        # Recursively search children, but skip function bodies
+        for child in node.children:
+            if child.type == "call":
+                is_function_def = False
+                for call_child in child.children:
+                    if call_child.type == "identifier":
+                        target_text = source_code[
+                            call_child.start_byte : call_child.end_byte
+                        ].decode("utf-8")
+                        if target_text in ["def", "defp", "defmodule"]:
+                            is_function_def = True
+                            break
+
+                if is_function_def:
+                    continue
+
+            self._find_imports_recursive(child, source_code, imports)
+
+    def _extract_requires(self, node, source_code: bytes) -> list:
+        """Extract all require declarations from a module body."""
+        requires = []
+        self._find_requires_recursive(node, source_code, requires)
+        return requires
+
+    def _find_requires_recursive(self, node, source_code: bytes, requires: list):
+        """Recursively find require declarations."""
+        if node.type == "call":
+            target = None
+            arguments = None
+
+            for child in node.children:
+                if child.type == "identifier":
+                    target = child
+                elif child.type == "arguments":
+                    arguments = child
+
+            if target and arguments:
+                target_text = source_code[target.start_byte : target.end_byte].decode(
+                    "utf-8"
+                )
+
+                if target_text == "require":
+                    # Parse the require
+                    for arg_child in arguments.children:
+                        if arg_child.type == "alias":
+                            module_name = source_code[
+                                arg_child.start_byte : arg_child.end_byte
+                            ].decode("utf-8")
+                            requires.append(module_name)
+
+        # Recursively search children, but skip function bodies
+        for child in node.children:
+            if child.type == "call":
+                is_function_def = False
+                for call_child in child.children:
+                    if call_child.type == "identifier":
+                        target_text = source_code[
+                            call_child.start_byte : call_child.end_byte
+                        ].decode("utf-8")
+                        if target_text in ["def", "defp", "defmodule"]:
+                            is_function_def = True
+                            break
+
+                if is_function_def:
+                    continue
+
+            self._find_requires_recursive(child, source_code, requires)
+
+    def _extract_uses(self, node, source_code: bytes) -> list:
+        """Extract all use declarations from a module body."""
+        uses = []
+        self._find_uses_recursive(node, source_code, uses)
+        return uses
+
+    def _find_uses_recursive(self, node, source_code: bytes, uses: list):
+        """Recursively find use declarations."""
+        if node.type == "call":
+            target = None
+            arguments = None
+
+            for child in node.children:
+                if child.type == "identifier":
+                    target = child
+                elif child.type == "arguments":
+                    arguments = child
+
+            if target and arguments:
+                target_text = source_code[target.start_byte : target.end_byte].decode(
+                    "utf-8"
+                )
+
+                if target_text == "use":
+                    # Parse the use
+                    for arg_child in arguments.children:
+                        if arg_child.type == "alias":
+                            module_name = source_code[
+                                arg_child.start_byte : arg_child.end_byte
+                            ].decode("utf-8")
+                            uses.append(module_name)
+
+        # Recursively search children, but skip function bodies
+        for child in node.children:
+            if child.type == "call":
+                is_function_def = False
+                for call_child in child.children:
+                    if call_child.type == "identifier":
+                        target_text = source_code[
+                            call_child.start_byte : call_child.end_byte
+                        ].decode("utf-8")
+                        if target_text in ["def", "defp", "defmodule"]:
+                            is_function_def = True
+                            break
+
+                if is_function_def:
+                    continue
+
+            self._find_uses_recursive(child, source_code, uses)
+
+    def _extract_value_mentions(self, node, source_code: bytes) -> list:
+        """Extract all module mentions as values (e.g., module passed as argument)."""
+        value_mentions = []
+        self._find_value_mentions_recursive(node, source_code, value_mentions)
+        # Return unique module names
+        return list(set(value_mentions))
+
+    def _find_value_mentions_recursive(self, node, source_code: bytes, value_mentions: list):
+        """Recursively find module value mentions."""
+        # Look for alias nodes that are NOT part of alias/import/require/use declarations
+        # and are NOT part of module function calls (which are already tracked in calls)
+
+        if node.type == "alias":
+            # Check if this is a standalone alias (value mention)
+            # Skip if parent is a specific call type
+            parent = node.parent if hasattr(node, 'parent') else None
+
+            # Get the module name
+            module_name = source_code[node.start_byte : node.end_byte].decode("utf-8")
+
+            # We need to check if this alias is part of a call with dot notation
+            # If it has a dot parent, it's a module function call, not a value mention
+            is_in_call = False
+            current = node
+
+            # Check ancestors to see if we're in a special context
+            for i in range(3):  # Check up to 3 levels up
+                if current.parent:
+                    current = current.parent
+                    if current.type == "call":
+                        # Check if this is alias/import/require/use/defmodule
+                        for child in current.children:
+                            if child.type == "identifier":
+                                func_text = source_code[child.start_byte : child.end_byte].decode("utf-8")
+                                if func_text in ["alias", "import", "require", "use", "defmodule"]:
+                                    is_in_call = True
+                                    break
+                    elif current.type == "dot":
+                        # This alias is part of a Module.function call
+                        is_in_call = True
+                        break
+
+            if not is_in_call:
+                value_mentions.append(module_name)
+
+        # Recursively search all children
+        for child in node.children:
+            self._find_value_mentions_recursive(child, source_code, value_mentions)
 
     def _extract_function_calls(self, node, source_code: bytes) -> list:
         """Extract all function calls from a module body."""
