@@ -1393,8 +1393,8 @@ class CicadaServer:
             )
 
 
-async def main():
-    """Main entry point."""
+async def async_main():
+    """Async main entry point."""
     try:
         server = CicadaServer()
         await server.run()
@@ -1403,7 +1403,12 @@ async def main():
         sys.exit(1)
 
 
-if __name__ == "__main__":
+def main():
+    """Synchronous entry point for use with setuptools console_scripts."""
     import asyncio
 
-    asyncio.run(main())
+    asyncio.run(async_main())
+
+
+if __name__ == "__main__":
+    main()
