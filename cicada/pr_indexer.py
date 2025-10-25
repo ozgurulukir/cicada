@@ -414,12 +414,14 @@ class PRIndexer:
             # If we can't fetch files, return empty list
             return []
 
-    def build_index(self, prs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def build_index(self, prs: List[Dict[str, Any]], preserve_last_pr: Optional[int] = None) -> Dict[str, Any]:
         """
         Build the index structure from PR data.
 
         Args:
             prs: List of PR dictionaries
+            preserve_last_pr: If set, use this as last_pr_number instead of calculating from prs.
+                             Used when building partial indexes from interrupted fetches.
 
         Returns:
             Index dictionary with metadata, prs, commit_to_pr mapping, and file_to_prs mapping
@@ -466,7 +468,11 @@ class PRIndexer:
         }
 
         # Track last PR number for incremental updates
-        if prs:
+        if preserve_last_pr is not None:
+            # Use preserved value (for partial/interrupted fetches)
+            index["metadata"]["last_pr_number"] = preserve_last_pr
+        elif prs:
+            # Calculate from PRs (for complete fetches)
             index["metadata"]["last_pr_number"] = max(pr["number"] for pr in prs)
 
         print(f"Index built: {len(prs)} PRs, {len(commit_to_pr)} commits, {len(file_to_prs)} files, {total_comments} comments")
@@ -785,10 +791,11 @@ class PRIndexer:
             output_path: Path where the index will be saved
             incremental: If True, only fetch new PRs since last index
         """
-        if incremental:
-            # Load existing index
-            existing_index = self.load_existing_index(output_path)
+        # Load existing index to preserve last_pr_number if clean build is interrupted
+        existing_index = self.load_existing_index(output_path)
+        old_last_pr = existing_index.get("metadata", {}).get("last_pr_number", 0) if existing_index else 0
 
+        if incremental:
             if existing_index:
                 # Fetch only new PRs
                 new_prs = self.incremental_update(existing_index)
@@ -809,15 +816,57 @@ class PRIndexer:
                 self._map_all_comment_lines(prs)
                 index = self.build_index(prs)
         else:
-            # Full index
+            # Full index (--clean)
+            print(f"Starting clean rebuild (will preserve last_pr_number={old_last_pr} if interrupted)...")
             prs = self.fetch_all_prs()
             # Map comment lines to current file state
             self._map_all_comment_lines(prs)
-            index = self.build_index(prs)
+
+            # If interrupted and we only got some PRs, preserve the old last_pr_number
+            # This allows incremental updates to continue working for NEW PRs
+            # User can run --clean again later to fill in the missing middle PRs
+            total_prs_in_repo = self._get_total_pr_count()
+            if len(prs) < total_prs_in_repo:
+                print(f"⚠️  Partial index: got {len(prs)}/{total_prs_in_repo} PRs.")
+                print(f"   Preserving last_pr_number={old_last_pr} for incremental updates.")
+                index = self.build_index(prs, preserve_last_pr=old_last_pr)
+            else:
+                # Complete fetch
+                index = self.build_index(prs)
 
         # Save index
         self.save_index(index, output_path)
         return index
+
+    def _get_total_pr_count(self) -> int:
+        """Get total number of PRs in the repository (quick count)."""
+        try:
+            result = subprocess.run(
+                [
+                    "gh",
+                    "pr",
+                    "list",
+                    "--state",
+                    "all",
+                    "--json",
+                    "number",
+                    "--limit",
+                    "1",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+                cwd=self.repo_path,
+            )
+            # The API returns PRs in descending order, so the first PR's number
+            # is approximately the total count (close enough for our purposes)
+            pr_list = json.loads(result.stdout)
+            if pr_list:
+                return pr_list[0]["number"]
+            return 0
+        except:
+            # If we can't determine, assume we got all PRs
+            return 0
 
 
 def main():
