@@ -439,6 +439,100 @@ No functions matching `{function_name}` were found in the index.
         }
         return json.dumps(output, indent=2)
 
+    @staticmethod
+    def format_module_usage_markdown(
+        module_name: str, usage_results: Dict[str, Any]
+    ) -> str:
+        """
+        Format module usage results as Markdown.
+
+        Args:
+            module_name: The module being searched for
+            usage_results: Dictionary with 'imports' and 'function_calls' keys
+
+        Returns:
+            Formatted Markdown string
+        """
+        imports = usage_results.get("imports", [])
+        function_calls = usage_results.get("function_calls", [])
+
+        lines = [f"# Usage of `{module_name}`", ""]
+
+        # Show imports section
+        if imports:
+            lines.extend([f"## Imported by {len(imports)} module(s):", ""])
+            for imp in imports:
+                alias_info = (
+                    f" as `{imp['alias_name']}`"
+                    if imp["alias_name"] != module_name.split(".")[-1]
+                    else ""
+                )
+                lines.append(
+                    f"- `{imp['importing_module']}` {alias_info} — `{imp['file']}`"
+                )
+            lines.append("")
+        else:
+            lines.extend(["## Imports:", "", "*No modules import this module*", ""])
+
+        # Show function calls section
+        if function_calls:
+            # Count total calls
+            total_calls = sum(len(fc["calls"]) for fc in function_calls)
+            lines.extend(
+                [
+                    f"## Called by {len(function_calls)} module(s) ({total_calls} function(s)):",
+                    "",
+                ]
+            )
+
+            for fc in function_calls:
+                lines.append(f"### `{fc['calling_module']}`")
+                lines.append(f"  `{fc['file']}`")
+                lines.append("")
+
+                for call in fc["calls"]:
+                    alias_info = (
+                        f" (via `{call['alias_used']}`)" if call["alias_used"] else ""
+                    )
+                    # Show unique line numbers for this function
+                    line_list = ", ".join(f":{line}" for line in sorted(call["lines"]))
+                    lines.append(
+                        f"  - `{call['function']}/{call['arity']}`{alias_info} — {line_list}"
+                    )
+
+                lines.append("")
+        else:
+            lines.extend(
+                ["## Function Calls:", "", "*No modules call functions from this module*"]
+            )
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def format_module_usage_json(
+        module_name: str, usage_results: Dict[str, Any]
+    ) -> str:
+        """
+        Format module usage results as JSON.
+
+        Args:
+            module_name: The module being searched for
+            usage_results: Dictionary with 'imports' and 'function_calls' keys
+
+        Returns:
+            Formatted JSON string
+        """
+        output = {
+            "module": module_name,
+            "imports": usage_results.get("imports", []),
+            "function_calls": usage_results.get("function_calls", []),
+            "summary": {
+                "imported_by": len(usage_results.get("imports", [])),
+                "called_by": len(usage_results.get("function_calls", [])),
+            },
+        }
+        return json.dumps(output, indent=2)
+
 
 class JSONFormatter:
     """Formats JSON data with customizable options."""

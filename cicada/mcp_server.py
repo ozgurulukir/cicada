@@ -16,8 +16,6 @@ from mcp.types import Tool, TextContent
 
 from cicada.formatter import ModuleFormatter
 from cicada.pr_finder import PRFinder
-from cicada.indexer import ElixirIndexer
-from cicada.pr_indexer import PRIndexer
 
 
 class CicadaServer:
@@ -132,6 +130,31 @@ class CicadaServer:
                 },
             ),
             Tool(
+                name="search_module_usage",
+                description=(
+                    "Find where an Elixir module is used throughout the codebase. "
+                    "Searches for all locations where the module is aliased/imported and called. "
+                    "Returns the modules that import/alias the target module and the locations where its functions are called. "
+                    "Output format defaults to Markdown with JSON as fallback."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "module_name": {
+                            "type": "string",
+                            "description": "Full module name to search for usage (e.g., 'MyApp.User')",
+                        },
+                        "format": {
+                            "type": "string",
+                            "description": "Output format: 'markdown' (default) or 'json'",
+                            "enum": ["markdown", "json"],
+                            "default": "markdown",
+                        },
+                    },
+                    "required": ["module_name"],
+                },
+            ),
+            Tool(
                 name="find_pr_for_line",
                 description=(
                     "Find the pull request that introduced a specific line of code. "
@@ -159,66 +182,6 @@ class CicadaServer:
                         },
                     },
                     "required": ["file_path", "line_number"],
-                },
-            ),
-            Tool(
-                name="index_repository",
-                description=(
-                    "Index an Elixir repository to create a searchable database of modules and functions. "
-                    "This scans all .ex and .exs files in the repository and extracts module/function information. "
-                    "Optionally fetches PR information for each module (requires GitHub CLI and may be slow). "
-                    "The index is saved to a JSON file for use by search_module and search_function tools."
-                ),
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "repo_path": {
-                            "type": "string",
-                            "description": "Path to the Elixir repository to index (default: current directory)",
-                            "default": ".",
-                        },
-                        "output_path": {
-                            "type": "string",
-                            "description": "Output path for the index file (default: .cicada/index.json)",
-                            "default": ".cicada/index.json",
-                        },
-                        "fetch_pr_info": {
-                            "type": "boolean",
-                            "description": "Fetch PR information for each module (requires GitHub CLI and may be slow)",
-                            "default": False,
-                        },
-                    },
-                    "required": [],
-                },
-            ),
-            Tool(
-                name="index_prs",
-                description=(
-                    "Index all pull requests in a GitHub repository for fast offline lookup. "
-                    "Fetches all PRs and builds a commit-to-PR mapping for quick PR discovery. "
-                    "Requires GitHub CLI to be installed and authenticated. "
-                    "Supports incremental updates to only fetch new PRs since last index."
-                ),
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "repo_path": {
-                            "type": "string",
-                            "description": "Path to the git repository (default: current directory)",
-                            "default": ".",
-                        },
-                        "output_path": {
-                            "type": "string",
-                            "description": "Output path for the PR index file (default: data/pr_index.json)",
-                            "default": "data/pr_index.json",
-                        },
-                        "incremental": {
-                            "type": "boolean",
-                            "description": "Only fetch new PRs since last index (faster)",
-                            "default": False,
-                        },
-                    },
-                    "required": [],
                 },
             ),
         ]
@@ -261,6 +224,15 @@ class CicadaServer:
                 max_examples,
                 test_files_only,
             )
+        elif name == "search_module_usage":
+            module_name = arguments.get("module_name")
+            output_format = arguments.get("format", "markdown")
+
+            if not module_name:
+                error_msg = "'module_name' is required"
+                return [TextContent(type="text", text=error_msg)]
+
+            return await self._search_module_usage(module_name, output_format)
         elif name == "find_pr_for_line":
             file_path = arguments.get("file_path")
             line_number = arguments.get("line_number")
@@ -275,18 +247,6 @@ class CicadaServer:
                 return [TextContent(type="text", text=error_msg)]
 
             return await self._find_pr_for_line(file_path, line_number, output_format)
-        elif name == "index_repository":
-            repo_path = arguments.get("repo_path", ".")
-            output_path = arguments.get("output_path", ".cicada/index.json")
-            fetch_pr_info = arguments.get("fetch_pr_info", False)
-
-            return await self._index_repository(repo_path, output_path, fetch_pr_info)
-        elif name == "index_prs":
-            repo_path = arguments.get("repo_path", ".")
-            output_path = arguments.get("output_path", "data/pr_index.json")
-            incremental = arguments.get("incremental", False)
-
-            return await self._index_prs(repo_path, output_path, incremental)
         else:
             raise ValueError(f"Unknown tool: {name}")
 
@@ -431,6 +391,93 @@ class CicadaServer:
         else:
             result = ModuleFormatter.format_function_results_markdown(
                 function_name, results
+            )
+
+        return [TextContent(type="text", text=result)]
+
+    async def _search_module_usage(
+        self, module_name: str, output_format: str = "markdown"
+    ) -> list[TextContent]:
+        """
+        Search for all locations where a module is used (aliased/imported and called).
+
+        Args:
+            module_name: The module to search for (e.g., "MyApp.User")
+            output_format: Output format ('markdown' or 'json')
+
+        Returns:
+            TextContent with usage information
+        """
+        # Check if the module exists in the index
+        if module_name not in self.index["modules"]:
+            error_msg = f"Module '{module_name}' not found in index."
+            return [TextContent(type="text", text=error_msg)]
+
+        usage_results = {
+            "imports": [],  # Modules that alias/import the target module
+            "function_calls": [],  # Direct function calls to the target module
+        }
+
+        # Search through all modules to find usage
+        for caller_module, module_data in self.index["modules"].items():
+            # Skip the module itself
+            if caller_module == module_name:
+                continue
+
+            # Check aliases for imports
+            aliases = module_data.get("aliases", {})
+            for alias_name, full_module in aliases.items():
+                if full_module == module_name:
+                    usage_results["imports"].append(
+                        {
+                            "importing_module": caller_module,
+                            "alias_name": alias_name,
+                            "full_module": full_module,
+                            "file": module_data["file"],
+                        }
+                    )
+
+            # Check function calls
+            calls = module_data.get("calls", [])
+            module_calls = {}  # Track calls grouped by function
+
+            for call in calls:
+                call_module = call.get("module")
+
+                # Resolve the call's module name using aliases
+                if call_module:
+                    resolved_module = aliases.get(call_module, call_module)
+
+                    if resolved_module == module_name:
+                        # Track which function is being called
+                        func_key = f"{call['function']}/{call['arity']}"
+
+                        if func_key not in module_calls:
+                            module_calls[func_key] = {
+                                "function": call["function"],
+                                "arity": call["arity"],
+                                "lines": [],
+                                "alias_used": call_module if call_module != resolved_module else None,
+                            }
+
+                        module_calls[func_key]["lines"].append(call["line"])
+
+            # Add call information if there are any calls
+            if module_calls:
+                usage_results["function_calls"].append(
+                    {
+                        "calling_module": caller_module,
+                        "file": module_data["file"],
+                        "calls": list(module_calls.values()),
+                    }
+                )
+
+        # Format results
+        if output_format == "json":
+            result = ModuleFormatter.format_module_usage_json(module_name, usage_results)
+        else:
+            result = ModuleFormatter.format_module_usage_markdown(
+                module_name, usage_results
             )
 
         return [TextContent(type="text", text=result)]
@@ -719,71 +766,6 @@ class CicadaServer:
 
         except Exception as e:
             error_msg = f"Error finding PR: {str(e)}"
-            return [TextContent(type="text", text=error_msg)]
-
-    async def _index_repository(
-        self, repo_path: str, output_path: str, fetch_pr_info: bool
-    ) -> list[TextContent]:
-        """
-        Index an Elixir repository.
-
-        Args:
-            repo_path: Path to the repository
-            output_path: Output path for the index file
-            fetch_pr_info: Whether to fetch PR information
-
-        Returns:
-            TextContent with indexing results
-        """
-        try:
-            indexer = ElixirIndexer(fetch_pr_info=fetch_pr_info)
-            index = indexer.index_repository(repo_path, output_path)
-
-            result_msg = (
-                f"Repository indexed successfully!\n\n"
-                f"Modules: {index['metadata']['total_modules']}\n"
-                f"Functions: {index['metadata']['total_functions']}\n"
-                f"Index saved to: {output_path}"
-            )
-
-            return [TextContent(type="text", text=result_msg)]
-
-        except Exception as e:
-            error_msg = f"Error indexing repository: {str(e)}"
-            return [TextContent(type="text", text=error_msg)]
-
-    async def _index_prs(
-        self, repo_path: str, output_path: str, incremental: bool
-    ) -> list[TextContent]:
-        """
-        Index pull requests in a GitHub repository.
-
-        Args:
-            repo_path: Path to the repository
-            output_path: Output path for the PR index file
-            incremental: Whether to perform incremental update
-
-        Returns:
-            TextContent with indexing results
-        """
-        try:
-            pr_indexer = PRIndexer(repo_path=repo_path)
-            index = pr_indexer.index_repository(
-                output_path=output_path, incremental=incremental
-            )
-
-            result_msg = (
-                f"PR index created successfully!\n\n"
-                f"Total PRs: {index['metadata']['total_prs']}\n"
-                f"Commits mapped: {index['metadata']['total_commits_mapped']}\n"
-                f"Index saved to: {output_path}\n\n"
-                f"You can now use find_pr_for_line for fast offline lookups."
-            )
-
-            return [TextContent(type="text", text=result_msg)]
-
-        except Exception as e:
-            error_msg = f"Error indexing PRs: {str(e)}"
             return [TextContent(type="text", text=error_msg)]
 
     async def run(self):

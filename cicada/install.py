@@ -188,29 +188,41 @@ def index_repository(cicada_dir, python_bin, repo_path, fetch_pr_info=False):
 
 
 def create_mcp_config(repo_path, cicada_dir, python_bin):
-    """Create .mcp.json configuration file."""
+    """Create or update .mcp.json configuration file."""
     print("Creating .mcp.json configuration...")
 
     repo_path = Path(repo_path).resolve()
     mcp_config_path = repo_path / ".mcp.json"
 
-    # Create configuration
-    config = {
-        "mcpServers": {
-            "cicada": {
-                "command": str(python_bin),
-                "args": [str(cicada_dir / "cicada" / "mcp_server.py")],
-                "cwd": str(cicada_dir),
-                "env": {"CICADA_REPO_PATH": str(repo_path)},
-            }
-        }
+    # Load existing config if present, otherwise create new one
+    if mcp_config_path.exists():
+        try:
+            with open(mcp_config_path, "r") as f:
+                config = json.load(f)
+            print(f"✓ Found existing .mcp.json, will merge configuration")
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Warning: Could not read existing .mcp.json ({e}), creating new one")
+            config = {}
+    else:
+        config = {}
+
+    # Ensure mcpServers section exists
+    if "mcpServers" not in config:
+        config["mcpServers"] = {}
+
+    # Add or update cicada configuration
+    config["mcpServers"]["cicada"] = {
+        "command": str(python_bin),
+        "args": [str(cicada_dir / "cicada" / "mcp_server.py")],
+        "cwd": str(cicada_dir),
+        "env": {"CICADA_REPO_PATH": str(repo_path)},
     }
 
     # Write config file
     with open(mcp_config_path, "w") as f:
         json.dump(config, f, indent=2)
 
-    print(f"✓ MCP configuration created at {mcp_config_path}")
+    print(f"✓ MCP configuration updated at {mcp_config_path}")
     return mcp_config_path
 
 
@@ -337,13 +349,10 @@ def main():
     print("=" * 60)
     print()
     print("Next steps:")
-    print("1. Configure Claude Code to use the MCP server:")
-    print(f"   Add {mcp_config_path} to your Claude Code settings")
+    print("1. Restart Claude Code")
     print()
-    print("2. Restart Claude Code")
-    print()
-    print("3. Try asking Claude Code:")
-    print("   - 'What modules are in this project?'")
+    print("2. Try asking Claude Code:")
+    print("   - 'Where is [Module] used?'")
     print("   - 'Show me the functions in [ModuleName]'")
     print()
 
