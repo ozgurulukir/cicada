@@ -59,11 +59,10 @@ class CicadaServer:
             Tool(
                 name="search_module",
                 description=(
-                    "Search for an Elixir module by exact name or file path and return all its functions. "
-                    "Provide either the full module name (e.g., 'MyApp.User') or a file path (e.g., 'lib/my_app/user.ex'). "
-                    "Returns the module location, all public and private functions with "
-                    "their signatures, argument names, types, and line numbers. "
-                    "Output format defaults to Markdown with JSON as fallback."
+                    "PREFERRED for Elixir code: Semantic search for modules by name or file path. "
+                    "Returns structured data with all functions, signatures, typespecs, arguments, and line numbers. "
+                    "Use this instead of grep/glob for finding Elixir modules. "
+                    "Supports 'MyApp.User' or 'lib/my_app/user.ex' formats."
                 ),
                 inputSchema={
                     "type": "object",
@@ -89,11 +88,10 @@ class CicadaServer:
             Tool(
                 name="search_function",
                 description=(
-                    "Search for an Elixir function by name across all modules or in a specific module. "
-                    "Supports multiple formats: 'function_name', 'function_name/arity' (searches all modules), "
-                    "or 'Module.function_name', 'Module.function_name/arity' (searches specific module only). "
-                    "Returns matching functions with their documentation, signatures, types, location, and call sites. "
-                    "Output format defaults to Markdown with JSON as fallback."
+                    "PREFERRED for Elixir code: Semantic search for functions with arity-aware matching. "
+                    "Returns structured data with docs, signatures, typespecs, and all call sites. "
+                    "Use this instead of grep for finding Elixir functions. "
+                    "Supports 'func_name', 'func_name/2', 'Module.func_name', or 'Module.func_name/2' formats."
                 ),
                 inputSchema={
                     "type": "object",
@@ -132,10 +130,9 @@ class CicadaServer:
             Tool(
                 name="search_module_usage",
                 description=(
-                    "Find where an Elixir module is used throughout the codebase. "
-                    "Searches for all locations where the module is aliased/imported and called. "
-                    "Returns the modules that import/alias the target module and the locations where its functions are called. "
-                    "Output format defaults to Markdown with JSON as fallback."
+                    "PREFERRED for Elixir code: Find all usages of a module including aliases, imports, and function calls. "
+                    "Returns structured data showing where the module is imported and all call locations. "
+                    "Use this instead of grep for tracking Elixir module usage."
                 ),
                 inputSchema={
                     "type": "object",
@@ -157,10 +154,9 @@ class CicadaServer:
             Tool(
                 name="find_pr_for_line",
                 description=(
-                    "Find the pull request that introduced a specific line of code. "
-                    "Provide a file path and line number to discover which PR created or modified that line. "
-                    "Returns commit information, author details, and associated PR metadata. "
-                    "Uses cached PR index for fast offline lookup when available."
+                    "PREFERRED for git history: Find the PR that introduced a specific line of code. "
+                    "Returns commit info, author details, and PR metadata with fast cached lookups. "
+                    "Use this instead of git blame for understanding code history context."
                 ),
                 inputSchema={
                     "type": "object",
