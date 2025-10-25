@@ -48,3 +48,6 @@ data/
 .mcp.json
 config.yaml
 test_config.yaml
+
+# Test fixtures
+tests/fixtures/elixir_project
