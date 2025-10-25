@@ -197,6 +197,43 @@ def detect_installation_method():
     import shutil
     import sys
 
+    script_path = Path(sys.argv[0]).resolve()
+    script_path_str = str(script_path)
+
+    # Check if running from a uvx cache/temporary directory
+    # uvx uses temporary environments, so we should NOT use cicada-server
+    # even if it's temporarily in PATH
+    uvx_indicators = [
+        '/.cache/uv/',
+        '/tmp/',
+        'tmpdir',
+        'temp',
+        # On some systems uvx might use other temp locations
+    ]
+
+    is_uvx = any(indicator in script_path_str for indicator in uvx_indicators)
+
+    if is_uvx:
+        # Running from uvx - use Python fallback since cicada-server won't be available later
+        python_bin = sys.executable
+        cicada_dir = Path(__file__).parent.parent.resolve()
+        return (
+            str(python_bin),
+            [str(cicada_dir / "cicada" / "mcp_server.py")],
+            str(cicada_dir),
+            "uvx (one-time run, using Python paths)"
+        )
+
+    # Check if running from a uv tools directory (permanent install)
+    if '.local/share/uv/tools' in script_path_str or '.local/bin/cicada-' in script_path_str:
+        # Installed via uv tool install
+        return (
+            "cicada-server",
+            [],
+            None,
+            "uv tool install (ensure ~/.local/bin is in PATH)"
+        )
+
     # Check if cicada-server is in PATH (from uv tool install)
     if shutil.which('cicada-server'):
         return (
@@ -204,17 +241,6 @@ def detect_installation_method():
             [],
             None,
             "uv tool install (permanent, fast)"
-        )
-
-    # Check if running from a uv tools directory (recently installed)
-    script_path = Path(sys.argv[0]).resolve()
-    if '.local/share/uv/tools' in str(script_path) or '.local/bin/cicada-' in str(script_path):
-        # Installed via uv but maybe not in PATH yet
-        return (
-            "cicada-server",
-            [],
-            None,
-            "uv tool install (ensure ~/.local/bin is in PATH)"
         )
 
     # Fall back to python with full path
