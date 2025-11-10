@@ -8,8 +8,10 @@ Author: Cursor(Auto)
 """
 
 import os
+import subprocess
 import sys
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, cast
 
@@ -335,6 +337,7 @@ class CicadaServer:
             include_usage_examples = arguments.get("include_usage_examples", False)
             max_examples = arguments.get("max_examples", 5)
             test_files_only = arguments.get("test_files_only", False)
+            changed_since = arguments.get("changed_since")
 
             if not function_name:
                 error_msg = "'function_name' is required"
@@ -346,6 +349,7 @@ class CicadaServer:
                 include_usage_examples,
                 max_examples,
                 test_files_only,
+                changed_since,
             )
         elif name == "search_module_usage":
             module_name = arguments.get("module_name")
@@ -445,6 +449,8 @@ class CicadaServer:
             return await self._find_dead_code(min_confidence, output_format)
         elif name == "get_module_dependencies":
             module_name = arguments.get("module_name")
+            if not module_name:
+                raise ValueError("module_name is required")
             output_format = arguments.get("format", "markdown")
             depth = arguments.get("depth", 1)
 
@@ -453,6 +459,12 @@ class CicadaServer:
             module_name = arguments.get("module_name")
             function_name = arguments.get("function_name")
             arity = arguments.get("arity")
+            if not module_name:
+                raise ValueError("module_name is required")
+            if not function_name:
+                raise ValueError("function_name is required")
+            if arity is None:
+                raise ValueError("arity is required")
             output_format = arguments.get("format", "markdown")
             include_context = arguments.get("include_context", False)
 
@@ -485,7 +497,7 @@ class CicadaServer:
         if include_suggestions:
             similar = find_similar_names(module_name, list(self.index["modules"].keys()))
             if similar:
-                error_msg += f"\n\nDid you mean one of these?\n" + "\n".join(
+                error_msg += "\n\nDid you mean one of these?\n" + "\n".join(
                     f"  - {name}" for name in similar[:5]
                 )
         return None, error_msg
@@ -624,6 +636,7 @@ class CicadaServer:
         include_usage_examples: bool = False,
         max_examples: int = 5,
         test_files_only: bool = False,
+        changed_since: str | None = None,
     ) -> list[TextContent]:
         """
         Search for a function across all modules and return matches with call sites.
@@ -643,12 +656,31 @@ class CicadaServer:
         # Search across all modules for function definitions
         results = []
         seen_functions: set[tuple[str, str, int]] = set()
+        # Parse changed_since filter if provided
+        cutoff_date = None
+        if changed_since:
+            cutoff_date = self._parse_changed_since(changed_since)
+
         for module_name, module_data in self.index["modules"].items():
             for func in module_data["functions"]:
                 if any(
                     pattern.matches(module_name, module_data["file"], func)
                     for pattern in parsed_patterns
                 ):
+                    # Filter by changed_since if provided
+                    if cutoff_date:
+                        func_modified = func.get("last_modified_at")
+                        if not func_modified:
+                            continue  # Skip functions without timestamp
+
+                        func_modified_dt = datetime.fromisoformat(func_modified)
+                        # Ensure timezone-aware for comparison
+                        if func_modified_dt.tzinfo is None:
+                            func_modified_dt = func_modified_dt.replace(tzinfo=timezone.utc)
+
+                        if func_modified_dt < cutoff_date:
+                            continue  # Function too old, skip
+
                     key = (module_name, func["name"], func["arity"])
                     if key in seen_functions:
                         continue
@@ -1001,6 +1033,91 @@ class CicadaServer:
                         )
 
         return call_sites
+
+    def _parse_changed_since(self, changed_since: str) -> datetime:
+        """
+        Parse changed_since parameter into datetime.
+
+        Supports:
+        - ISO dates: '2024-01-15'
+        - Relative: '7d', '2w', '3m', '1y'
+        - Git refs: 'HEAD~10', 'v1.0.0' (if git_helper available)
+
+        Returns:
+            datetime object (timezone-aware) representing the cutoff date
+
+        Raises:
+            ValueError: If format is invalid or amount is negative/zero
+        """
+        # ISO date format (YYYY-MM-DD)
+        if "-" in changed_since and len(changed_since) >= 10:
+            try:
+                dt = datetime.fromisoformat(changed_since)
+                # Ensure timezone-aware - if naive, assume UTC
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt
+            except ValueError:
+                pass
+
+        # Relative format (7d, 2w, 3m, 1y)
+        if len(changed_since) >= 2 and changed_since[-1] in "dwmy":
+            try:
+                amount = int(changed_since[:-1])
+                unit = changed_since[-1]
+
+                # Validate positive amount
+                if amount <= 0:
+                    raise ValueError(f"Time amount must be positive, got: {amount}{unit}")
+
+                now = datetime.now(timezone.utc)
+                if unit == "d":
+                    return now - timedelta(days=amount)
+                elif unit == "w":
+                    return now - timedelta(weeks=amount)
+                elif unit == "m":
+                    return now - timedelta(days=amount * 30)
+                elif unit == "y":
+                    return now - timedelta(days=amount * 365)
+            except ValueError as e:
+                # Re-raise if it's our validation error
+                if "Time amount must be positive" in str(e):
+                    raise
+                # Otherwise, try next format (likely invalid int parsing)
+
+        # Git ref format (requires git_helper)
+        if self.git_helper:
+            try:
+                # Validate git ref format to prevent command injection
+                # Refs should not start with - or -- (could be flags)
+                if changed_since.startswith("-"):
+                    raise ValueError(f"Invalid git ref format (starts with '-'): {changed_since}")
+
+                # Get timestamp of the ref using git show
+                repo_path = self.git_helper.repo_path
+                result = subprocess.run(
+                    ["git", "show", "-s", "--format=%ai", changed_since],
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                dt = datetime.fromisoformat(result.stdout.strip())
+                # Git returns timezone-aware datetime, ensure it has tzinfo
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt
+            except subprocess.CalledProcessError:
+                # Git command failed - invalid ref or other git error
+                pass
+            except ValueError:
+                # Re-raise validation errors
+                raise
+            except Exception:
+                # Other errors (e.g., datetime parsing) - try next format
+                pass
+
+        raise ValueError(f"Invalid changed_since format: {changed_since}")
 
     def _get_recent_pr_info(self, file_path: str) -> dict | None:
         """
@@ -1590,6 +1707,9 @@ class CicadaServer:
         if error_msg:
             return [TextContent(type="text", text=error_msg)]
 
+        # module_data is guaranteed to be non-None here
+        assert module_data is not None
+
         # Get dependencies from the index
         dependencies = module_data.get("dependencies", {})
         direct_modules = dependencies.get("modules", [])
@@ -1622,7 +1742,7 @@ class CicadaServer:
                 "module": module_name,
                 "dependencies": {
                     "direct": sorted(direct_modules),
-                    "all": sorted(list(all_modules)) if depth > 1 else sorted(direct_modules),
+                    "all": sorted(all_modules) if depth > 1 else sorted(direct_modules),
                     "depth": depth,
                 },
             }
@@ -1715,6 +1835,9 @@ class CicadaServer:
         if error_msg:
             return [TextContent(type="text", text=error_msg)]
 
+        # module_data is guaranteed to be non-None here
+        assert module_data is not None
+
         # Find the function
         functions = module_data.get("functions", [])
         target_func = None
@@ -1753,7 +1876,7 @@ class CicadaServer:
                             end = min(len(source_lines), line_num + 1)
                             context = "".join(source_lines[start:end])
                             context_lines[line_num] = context.rstrip()
-            except (OSError, IOError):
+            except OSError:
                 pass  # If we can't read the file, just skip context
 
         # Format output
