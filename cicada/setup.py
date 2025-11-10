@@ -128,7 +128,7 @@ def get_mcp_config_for_editor(
             "needs_dir": True,
         },
         "opencode": {
-            "config_path": repo_path / ".opencode.json",
+            "config_path": repo_path / ".mcp.json",
             "config_key": "mcpServers",
             "needs_dir": False,
         },

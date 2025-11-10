@@ -103,7 +103,7 @@ class TestGetMcpConfigForEditor:
         with patch("shutil.which", return_value="cicada-server"):
             config_path, config = get_mcp_config_for_editor("opencode", mock_repo, mock_storage_dir)
 
-        assert config_path == mock_repo / ".opencode.json"
+        assert config_path == mock_repo / ".mcp.json"
         assert "mcpServers" in config
         assert "cicada" in config["mcpServers"]
 

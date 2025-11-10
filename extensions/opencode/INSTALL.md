@@ -50,12 +50,12 @@ cicada opencode
 
 This will:
 - Index your codebase
-- Create `.opencode.json` configuration file
+- Create `.mcp.json` configuration file
 - Store index data in `~/.cicada/projects/<hash>/`
 
 #### Step 4: Restart OpenCode
 
-Restart OpenCode to load the MCP server. The configuration is automatically detected from `.opencode.json`.
+Restart OpenCode to load the MCP server. The configuration is automatically detected from `.mcp.json`.
 
 ---
 
@@ -69,9 +69,9 @@ If you need to manually configure the MCP server:
 uv tool install cicada-mcp
 ```
 
-#### Step 2: Create `.opencode.json` manually
+#### Step 2: Create `.mcp.json` manually
 
-In your project root, create `.opencode.json`:
+In your project root, create `.mcp.json`:
 
 ```json
 {
@@ -125,7 +125,7 @@ If Cicada is working, you'll see detailed results with function signatures, line
 Cicada uses these default paths:
 
 - **Index Storage:** `~/.cicada/projects/<repo_hash>/`
-- **Project Config:** `.opencode.json` (in project root)
+- **Project Config:** `.mcp.json` (in project root)
 - **Generated Files:**
   - `index.json` - Main code index
   - `config.yaml` - Project configuration
@@ -179,7 +179,7 @@ cicada opencode
 
 ### Issue 3: MCP Server Won't Start
 
-**Cause:** Invalid `.opencode.json` or missing index
+**Cause:** Invalid `.mcp.json` or missing index
 
 **Solution:**
 ```bash
@@ -187,8 +187,8 @@ cicada opencode
 cd /path/to/your/project
 cicada opencode
 
-# Verify .opencode.json exists and is valid
-cat .opencode.json
+# Verify .mcp.json exists and is valid
+cat .mcp.json
 
 # Check index was created
 ls ~/.cicada/projects/
@@ -299,7 +299,7 @@ To completely remove Cicada:
 uv tool uninstall cicada-mcp
 
 # Remove project configuration
-rm .opencode.json
+rm .mcp.json
 
 # Remove index data (optional)
 rm -rf ~/.cicada/
