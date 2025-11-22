@@ -74,7 +74,7 @@ setup-fixtures:
 
 # Run tests
 test: install generate-scip-proto setup-fixtures
-	@uv run pytest -n auto
+	@uv run pytest -n auto -q --tb=short
 
 # Run tests with verbose output
 test-verbose: install generate-scip-proto setup-fixtures
