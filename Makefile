@@ -1,25 +1,26 @@
-.PHONY: help install install-deps setup-fixtures test test-verbose test-watch cover clean reset format lint pre-commit ci-test
+.PHONY: help install install-deps generate-scip-proto setup-fixtures test test-verbose test-watch cover clean reset format lint pre-commit ci-test
 
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  make install       - Full install (deps + cicada tool to ~/.local/bin)"
-	@echo "  make install-deps  - Install dependencies only (no tool installation)"
-	@echo "  make uninstall     - Uninstall cicada tool"
-	@echo "  make setup-fixtures - Setup test fixtures"
-	@echo "  make test          - Run all tests (auto-installs dependencies)"
-	@echo "  make test-verbose  - Run tests with verbose output (auto-installs dependencies)"
-	@echo "  make test-watch    - Run tests in watch mode (auto-installs dependencies)"
-	@echo "  make cover         - Run tests with coverage report (auto-installs dependencies)"
-	@echo "  make format        - Format code with black (auto-installs dependencies)"
-	@echo "  make lint          - Run ruff linter, pyrefly type checker and vulture dead code detector (auto-installs dependencies)"
-	@echo "  make lint-fix      - Auto-fix issues with ruff"
-	@echo "  make pre-commit    - Run all pre-commit checks (auto-installs dependencies)"
-	@echo "  make ci-test       - Run tests in CI environment (auto-installs dependencies)"
-	@echo "  make clean         - Remove generated files"
-	@echo "  make reset         - Full reset (cache, models, .cicada dirs)"
-	@echo "  make dev           - Clean rebuild and install (avoids cache issues)"
-	@echo "  make help          - Display this help message"
+	@echo "  make install          - Full install (deps + cicada tool to ~/.local/bin)"
+	@echo "  make install-deps     - Install dependencies only (no tool installation)"
+	@echo "  make uninstall        - Uninstall cicada tool"
+	@echo "  make generate-scip-proto - Generate SCIP protobuf files for local development (auto-generated during package build)"
+	@echo "  make setup-fixtures   - Setup test fixtures"
+	@echo "  make test             - Run all tests (auto-installs dependencies)"
+	@echo "  make test-verbose     - Run tests with verbose output (auto-installs dependencies)"
+	@echo "  make test-watch       - Run tests in watch mode (auto-installs dependencies)"
+	@echo "  make cover            - Run tests with coverage report (auto-installs dependencies)"
+	@echo "  make format           - Format code with black (auto-installs dependencies)"
+	@echo "  make lint             - Run ruff linter, pyrefly type checker and vulture dead code detector (auto-installs dependencies)"
+	@echo "  make lint-fix         - Auto-fix issues with ruff"
+	@echo "  make pre-commit       - Run all pre-commit checks (auto-installs dependencies)"
+	@echo "  make ci-test          - Run tests in CI environment (auto-installs dependencies)"
+	@echo "  make clean            - Remove generated files"
+	@echo "  make reset            - Full reset (cache, models, .cicada dirs)"
+	@echo "  make dev              - Clean rebuild and install (avoids cache issues)"
+	@echo "  make help             - Display this help message"
 
 dev:
 	@echo "Installing cicada tool in development mode (clean rebuild)..."
@@ -58,24 +59,33 @@ uninstall: clean
 	@uv tool uninstall cicada-mcp 2>/dev/null || true
 	@echo "cicada uninstalled"
 
+# Generate SCIP protobuf files
+generate-scip-proto:
+	@echo "Generating SCIP protobuf files..."
+	@if command -v protoc >/dev/null 2>&1; then \
+		cd cicada/languages/scip && protoc -I. --python_out=. --pyi_out=. scip.proto && echo "✓ SCIP protobuf files generated (via protoc)"; \
+	else \
+		cd cicada/languages/scip && uvx --from grpcio-tools python -m grpc_tools.protoc -I. --python_out=. --pyi_out=. scip.proto && echo "✓ SCIP protobuf files generated (via grpcio-tools)"; \
+	fi
+
 # Setup test fixtures
 setup-fixtures:
 	@bash tests/setup_fixtures.sh
 
 # Run tests
-test: install setup-fixtures
+test: install generate-scip-proto setup-fixtures
 	@uv run pytest -n auto
 
 # Run tests with verbose output
-test-verbose: install setup-fixtures
+test-verbose: install generate-scip-proto setup-fixtures
 	@uv run pytest -n auto -v
 
 # Run tests in watch mode
-test-watch: install setup-fixtures
+test-watch: install generate-scip-proto setup-fixtures
 	@uv run pytest-watch
 
 # Run tests with coverage
-cover: install setup-fixtures
+cover: install generate-scip-proto setup-fixtures
 	@uv run pytest -n auto --cov=cicada --cov-report=html --cov-report=term-missing --cov-fail-under=80
 	@echo "Coverage report generated in htmlcov/index.html"
 
@@ -96,7 +106,7 @@ lint: install
 	uv run ruff check cicada || FAILED=1; \
 	echo ""; \
 	echo "Running pyrefly type checker..."; \
-	uv run pyrefly check cicada --project-excludes tests || FAILED=1; \
+	uv run pyrefly check cicada --project-excludes tests --project-excludes cicada/languages/scip || FAILED=1; \
 	echo ""; \
 	echo "Running vulture dead code detector..."; \
 	uv run vulture cicada --min-confidence 80 || FAILED=1; \
@@ -126,18 +136,19 @@ pre-commit: install
 	uv run ruff check cicada || FAILED=1; \
 	echo ""; \
 	echo "Running pyrefly type checker..."; \
-	uv run pyrefly check cicada --project-excludes tests || FAILED=1; \
+	uv run pyrefly check cicada --project-excludes tests --project-excludes cicada/languages/scip || FAILED=1; \
 	echo ""; \
 	echo "Running vulture dead code detector..."; \
 	uv run vulture cicada --min-confidence 80 || FAILED=1; \
 	exit $$FAILED
+	@$(MAKE) generate-scip-proto
 	@echo "Running tests with coverage..."
 	@bash tests/setup_fixtures.sh
 	@uv run pytest -n auto --cov=cicada --cov-report=html --cov-report=term-missing --cov-fail-under=80
 	@echo "✓ All pre-commit checks passed!"
 
 # Run tests in CI environment
-ci-test: install setup-fixtures
+ci-test: install generate-scip-proto setup-fixtures
 	@uv run pytest -n auto -v --cov=cicada --cov-report=term-missing --cov-report=xml --cov-fail-under=80
 
 # Clean up generated files
@@ -153,6 +164,7 @@ clean:
 	@rm -rf venv   # legacy venv
 	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name "*.pyc" -delete
+	@rm -f cicada/languages/scip/scip_pb2.py cicada/languages/scip/scip_pb2.pyi
 	@echo "Cleaned up generated files"
 
 # Full reset: clean everything including cache, models, and cicada directories

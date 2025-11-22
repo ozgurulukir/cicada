@@ -158,11 +158,11 @@ def test_index_repository_keyword_extractor_init_failure(temp_repo, capsys):
         return_value=("bert", "glove"),
     ):
         with patch(
-            "cicada.elixir.extractors.keybert.KeyBERTExtractor",
+            "cicada.extractors.keybert.KeyBERTExtractor",
             side_effect=ImportError("No keybert"),
         ):
             # Should fall back to not extracting keywords
-            result = indexer.index_repository(
+            indexer._index_repository_full(
                 str(temp_repo),
                 str(temp_repo / "index.json"),
                 extract_keywords=True,
@@ -177,10 +177,10 @@ def test_index_repository_string_extractor_init_failure(temp_repo, capsys):
     indexer = ElixirIndexer(verbose=True)
 
     with patch(
-        "cicada.elixir.extractors.StringExtractor",
+        "cicada.languages.elixir.extractors.StringExtractor",
         side_effect=ImportError("No string extractor"),
     ):
-        result = indexer.index_repository(
+        indexer._index_repository_full(
             str(temp_repo),
             str(temp_repo / "index.json"),
             extract_string_keywords=True,
@@ -195,7 +195,7 @@ def test_index_repository_git_helper_init_failure(temp_repo, capsys):
     indexer = ElixirIndexer(verbose=True)
 
     with patch("cicada.indexer.GitHelper", side_effect=RuntimeError("No git")):
-        result = indexer.index_repository(
+        indexer._index_repository_full(
             str(temp_repo),
             str(temp_repo / "index.json"),
             compute_timestamps=True,
@@ -216,7 +216,7 @@ def test_index_repository_timestamp_computation_error(temp_repo):
     mock_git_helper.get_functions_evolution_batch.side_effect = RuntimeError("Git error")
 
     with patch("cicada.indexer.GitHelper", return_value=mock_git_helper):
-        result = indexer.index_repository(
+        result = indexer._index_repository_full(
             str(temp_repo),
             str(temp_repo / "index.json"),
             compute_timestamps=True,
@@ -250,7 +250,7 @@ end
 """
         )
 
-    result = indexer.index_repository(
+    indexer._index_repository_full(
         str(temp_repo), str(temp_repo / "index.json"), extract_keywords=False
     )
 
@@ -283,7 +283,7 @@ end
     mock_git_helper.get_functions_evolution_batch.return_value = {}
 
     with patch("cicada.indexer.GitHelper", return_value=mock_git_helper):
-        result = indexer.index_repository(
+        indexer._index_repository_full(
             str(temp_repo),
             str(temp_repo / "index.json"),
             compute_timestamps=True,

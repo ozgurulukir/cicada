@@ -105,7 +105,7 @@ class TestIndexerDependencyExtraction:
         output_path = sample_elixir_file / ".cicada" / "index.json"
 
         # Index the repository
-        index = indexer.index_repository(
+        index = indexer.incremental_index_repository(
             str(sample_elixir_file), str(output_path), extract_keywords=False
         )
 
@@ -115,9 +115,10 @@ class TestIndexerDependencyExtraction:
 
         # Check module-level dependencies
         assert "dependencies" in user_module
-        assert "modules" in user_module["dependencies"]
-        assert "MyApp.Repo" in user_module["dependencies"]["modules"]
-        assert "MyApp.Auth" in user_module["dependencies"]["modules"]
+        assert isinstance(user_module["dependencies"], list)
+        dep_modules = [dep["module"] for dep in user_module["dependencies"]]
+        assert "MyApp.Repo" in dep_modules
+        assert "MyApp.Auth" in dep_modules
 
         # Check function-level dependencies
         create_user_func = next(f for f in user_module["functions"] if f["name"] == "create_user")
@@ -132,7 +133,9 @@ class TestIndexerDependencyExtraction:
         output_path = sample_elixir_file / ".cicada" / "index.json"
 
         # Do initial index
-        indexer.index_repository(str(sample_elixir_file), str(output_path), extract_keywords=False)
+        indexer.incremental_index_repository(
+            str(sample_elixir_file), str(output_path), extract_keywords=False
+        )
 
         # Modify the file
         user_file = sample_elixir_file / "lib" / "user.ex"
@@ -151,8 +154,9 @@ class TestIndexerDependencyExtraction:
 
         # Check module-level dependencies
         assert "dependencies" in user_module
-        assert "modules" in user_module["dependencies"]
-        assert "MyApp.Repo" in user_module["dependencies"]["modules"]
+        assert isinstance(user_module["dependencies"], list)
+        dep_modules = [dep["module"] for dep in user_module["dependencies"]]
+        assert "MyApp.Repo" in dep_modules
 
         # Check function-level dependencies
         create_user_func = next(f for f in user_module["functions"] if f["name"] == "create_user")

@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import Any, Literal, cast
 
-from cicada.indexer import ElixirIndexer
+from cicada.languages import LanguageRegistry
 from cicada.utils import (
     create_storage_dir,
     get_config_path,
@@ -23,6 +23,53 @@ from cicada.utils import (
 )
 
 EditorType = Literal["claude", "cursor", "vs", "gemini", "codex", "opencode"]
+
+
+def detect_project_language(repo_path: Path) -> str:
+    """
+    Detect project language from marker files.
+
+    Args:
+        repo_path: Repository root path
+
+    Returns:
+        Language name ('elixir', 'python', etc.)
+
+    Raises:
+        ValueError: If no recognized project type found
+    """
+    # Check for Python markers
+    python_markers = [
+        "pyproject.toml",
+        "setup.py",
+        "requirements.txt",
+        "Pipfile",
+        "poetry.lock",
+    ]
+
+    for marker in python_markers:
+        if (repo_path / marker).exists():
+            return "python"
+
+    # Check for Elixir marker
+    if (repo_path / "mix.exs").exists():
+        return "elixir"
+
+    # Check for TypeScript/JavaScript markers
+    ts_markers = ["tsconfig.json", "package.json"]
+    for marker in ts_markers:
+        if (repo_path / marker).exists():
+            # Check if it's TypeScript or plain JavaScript
+            if (repo_path / "tsconfig.json").exists():
+                return "typescript"
+            return "javascript"
+
+    # No recognized language
+    raise ValueError(
+        f"Could not detect project language in {repo_path}\n"
+        "Expected Python markers (pyproject.toml, setup.py, etc.), "
+        "Elixir marker (mix.exs), or TypeScript/JavaScript markers"
+    )
 
 
 def _setup_gitattributes(repo_path: Path) -> None:
@@ -255,12 +302,15 @@ keyword_expansion:
         print(f"✓ Config file created at {config_path}")
 
 
-def index_repository(repo_path: Path, force_full: bool = False, verbose: bool = True) -> None:
+def index_repository(
+    repo_path: Path, language: str, force_full: bool = False, verbose: bool = True
+) -> None:
     """
     Index the repository with keyword extraction enabled.
 
     Args:
         repo_path: Path to the repository
+        language: Programming language (e.g., 'python', 'elixir', 'typescript')
         force_full: If True, force full reindex instead of incremental
         verbose: Whether to print progress messages (default: True)
 
@@ -269,20 +319,22 @@ def index_repository(repo_path: Path, force_full: bool = False, verbose: bool = 
     """
     try:
         index_path = get_index_path(repo_path)
-        indexer = ElixirIndexer(verbose=verbose)
+        config_path = get_config_path(repo_path)
 
-        # Use incremental indexing by default (unless force_full is True)
-        indexer.incremental_index_repository(
+        # Use standard indexer interface
+        indexer = LanguageRegistry.get_indexer(language)
+        indexer.index_repository(
             repo_path=str(repo_path),
             output_path=str(index_path),
-            extract_keywords=True,
-            force_full=force_full,
+            force=force_full,
+            verbose=verbose,
+            config_path=str(config_path),
         )
         # Don't print duplicate message - indexer already reports completion
     except Exception as e:
         if verbose:
             print(f"Error: Failed to index repository: {e}")
-            print("Please check that the repository contains valid Elixir files.")
+            print(f"Please check that the repository contains valid {language} files.")
         raise
 
 
@@ -445,6 +497,9 @@ def setup(
         repo_path = Path.cwd()
     repo_path = repo_path.resolve()
 
+    # Detect project language
+    language = detect_project_language(repo_path)
+
     # Create storage directory
     storage_dir = create_storage_dir(repo_path)
 
@@ -543,7 +598,7 @@ def setup(
 
         # Index repository if needed
         if should_index:
-            index_repository(repo_path, force_full=force_full)
+            index_repository(repo_path, language, force_full=force_full)
             print()
 
     # Update CLAUDE.md with cicada instructions (only for Claude Code editor)
@@ -629,10 +684,11 @@ def main():
         print(f"Error: Path is not a directory: {repo_path}")
         sys.exit(1)
 
-    # Check if it's an Elixir repository
-    if not (repo_path / "mix.exs").exists():
-        print(f"Error: {repo_path} does not appear to be an Elixir project")
-        print("(mix.exs not found)")
+    # Detect and validate project language
+    try:
+        detect_project_language(repo_path)
+    except ValueError as e:
+        print(f"Error: {e}")
         sys.exit(1)
 
     # Run setup

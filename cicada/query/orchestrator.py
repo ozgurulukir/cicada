@@ -231,16 +231,16 @@ class QueryOrchestrator:
                         else func_pattern.module
                     )
 
-                    if matches_pattern(
-                        f"*.{module_base}.{func_pattern.name}", module_name
-                    ):
+                    if matches_pattern(f"*.{module_base}.{func_pattern.name}", module_name):
                         is_module_search = True
 
                 if (
                     is_module_search
                     and filter_type in ["all", "modules"]
                     and module_matches
-                    and (func_pattern.name == "*" or matches_pattern(func_pattern.name, module_tail))
+                    and (
+                        func_pattern.name == "*" or matches_pattern(func_pattern.name, module_tail)
+                    )
                 ):
                     # Add module as result
                     results.append(

@@ -8,7 +8,7 @@ import pytest
 import tree_sitter_elixir as ts_elixir
 from tree_sitter import Language, Parser
 
-from cicada.elixir.extractors import StringExtractor, extract_modules
+from cicada.languages.elixir.extractors import StringExtractor, extract_modules
 
 
 @pytest.fixture

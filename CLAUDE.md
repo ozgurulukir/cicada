@@ -831,6 +831,80 @@ The old tools remain available but are marked as deprecated in their description
 - **Router:** `cicada/mcp/router.py` - Routes to appropriate handler
 - **Tests:** `tests/mcp/test_git_history_unified.py` - Comprehensive test suite
 
+## Python-Specific Behavior
+
+### Class Display in search_module
+
+For Python codebases, the `search_module` tool displays both module-level functions AND classes defined in the module. This improves discoverability when working with Python code.
+
+The Python indexer creates separate searchable entities:
+
+1. **Modules** (e.g., `cicada.git.history_analyzer`)
+   - Contains module-level functions
+   - Displays classes defined in the module
+   - Each class shows: name, line number, public/private method counts
+
+2. **Classes** (e.g., `HistoryAnalyzer`)
+   - Indexed separately as module entries
+   - Contains class methods
+   - Has `parent_module` field linking to the module
+
+**Example search_module output:**
+
+```
+cicada/git/history_analyzer.py:1
+cicada.git.history_analyzer • 0 public • 0 private
+
+**Classes:**
+  • HistoryAnalyzer (line 17) • 3 public • 9 private
+    Analyzes git history for files and functions.
+
+Module-level: (none)
+```
+
+Both approaches work for finding code:
+- `search_module("cicada.git.history_analyzer")` → Shows module with classes
+- `search_module("HistoryAnalyzer")` → Shows class with methods
+
+**Implementation:**
+- **Indexer:** `cicada/languages/scip/converter.py` - Tracks classes in module entries
+- **Formatter:** `cicada/format/formatter.py` - Displays classes section
+- **Tests:** `tests/format/test_class_display.py`, `tests/languages/scip/test_scip_converter.py`
+
+### Configurable Import Detection
+
+The SCIP converter has a configurable `import_search_lines` parameter that controls how many lines from the top of the file are scanned for import statements. This addresses the common issue where files with large docstrings, copyright headers, or extensive module documentation push imports beyond the initial lines.
+
+**Default Behavior:**
+- Scans first **50 lines** for imports (increased from 15 in initial implementation)
+- Configurable via `import_search_lines` parameter
+- Prevents false positives by ignoring function calls deeper in the file
+
+**Usage:**
+
+```python
+from cicada.languages.scip.converter import SCIPConverter
+
+# Use default (50 lines)
+converter = SCIPConverter()
+
+# Increase for files with very large headers
+converter = SCIPConverter(import_search_lines=100)
+
+# Decrease for faster processing if all imports are early
+converter = SCIPConverter(import_search_lines=25)
+```
+
+**Why This Matters:**
+- Python files often have large module docstrings (10-30 lines)
+- Copyright headers and license text can push imports down
+- Without this limit, regular function calls would be misidentified as imports
+- The configurable limit balances accuracy and flexibility
+
+**Implementation:**
+- **Location:** `cicada/languages/scip/converter.py:19-42` (constructor), `764` (usage)
+- **Tests:** `tests/languages/scip/test_import_search_lines.py`
+
 ## Search Query Syntax
 
 Cicada's search system supports both keyword-based and pattern-based queries with automatic query type detection.
@@ -1095,6 +1169,7 @@ This project uses **uv** as the primary Python package manager and build tool. W
 - **Run commands:** `uv run <command>` (e.g., `uv run python -m pytest`)
 - **Install the project:** `uv pip install -e .` for development installation
 - **Tool installation:** `uv tool install cicada-mcp`
+- **Reinstall after changes:** Run `make dev` to reinstall the project (updates the installed `cicada` command)
 
 The project includes `uv.lock` for reproducible builds and `pyproject.toml` for project configuration.
 
@@ -1105,5 +1180,32 @@ The project includes `uv.lock` for reproducible builds and `pyproject.toml` for 
 - Write tests for new features
 - Keep functions focused and modular
 - Use make to run tests
+- Always use uv to run any python commands. Don't just run python without that
+- Don't use --no-verify unless explicitly asked
 - There is no such thing as unrelated tests. They need to pass before commit
 - Tags and publishing is automated via CIA
+
+<cicada>
+  **ALWAYS use cicada-mcp tools for Elixir code searches. NEVER use Grep/Find for these tasks.**
+
+  ### Use cicada tools for:
+  - YOUR PRIMARY TOOL - Start here for ALL code exploration and discovery. `mcp__cicada__query`
+  - DEEP-DIVE TOOL: View a module's complete API and dependencies after discovering it with query. `mcp__cicada__search_module`
+  - DEEP-DIVE TOOL: Find function definitions and call sites after discovering with query. `mcp__cicada__search_function`
+  - UNIFIED HISTORY TOOL: One tool for all git history queries - replaces get_blame, get_commit_history, find_pr_for_line, and get_file_pr_history. `mcp__cicada__git_history`
+  - ANALYSIS TOOL: Find potentially unused public functions with confidence levels. `mcp__cicada__find_dead_code`
+  - DRILL-DOWN TOOL: Expand a query result to see complete details. `mcp__cicada__expand_result`
+  - ADVANCED: Execute jq queries directly against the Cicada index for custom analysis and data exploration. `mcp__cicada__query_jq`
+
+  ### DO NOT use Grep for:
+  - ❌ Searching for module structure
+  - ❌ Searching for function definitions
+  - ❌ Searching for module imports/usage
+
+  ### You can still use Grep for:
+  - ✓ Non-code files (markdown, JSON, config)
+  - ✓ String literal searches
+  - ✓ Pattern matching in single line comments
+</cicada>
+
+

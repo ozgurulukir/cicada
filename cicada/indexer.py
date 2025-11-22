@@ -12,13 +12,14 @@ from datetime import datetime
 from pathlib import Path
 
 from cicada.cooccurrence import CooccurrenceAnalyzer
-from cicada.elixir.dependency_analyzer import (
+from cicada.git import GitHelper
+from cicada.languages.elixir.dependency_analyzer import (
     calculate_function_end_line,
     extract_function_dependencies,
     extract_module_dependencies,
 )
-from cicada.elixir.parser import ElixirParser
-from cicada.git import GitHelper
+from cicada.languages.elixir.parser import ElixirParser
+from cicada.parsing.base_indexer import BaseIndexer
 from cicada.tier import read_keyword_extraction_config
 from cicada.utils import (
     load_index,
@@ -35,7 +36,7 @@ from cicada.utils.hash_utils import (
 from cicada.version_check import get_version_string, version_mismatch
 
 
-class ElixirIndexer:
+class ElixirIndexer(BaseIndexer):
     """Indexes Elixir repositories to extract module and function information."""
 
     # Progress reporting interval - report every N files processed
@@ -58,6 +59,18 @@ class ElixirIndexer:
             "priv",
         }
         self._interrupted = False
+
+    def get_language_name(self) -> str:
+        """Return the language identifier for this indexer."""
+        return "elixir"
+
+    def get_file_extensions(self) -> list[str]:
+        """Return file extensions to index for Elixir."""
+        return [".ex", ".exs"]
+
+    def get_excluded_dirs(self) -> list[str]:
+        """Return Elixir-specific directories to exclude from indexing."""
+        return ["deps", "_build", "node_modules", ".git", "assets", "priv"]
 
     def _extract_dependencies(self, module_data: dict, functions: list) -> tuple[dict, list]:
         """
@@ -339,6 +352,45 @@ class ElixirIndexer:
 
     def index_repository(
         self,
+        repo_path: str | Path,
+        output_path: str | Path,
+        force: bool = False,
+        verbose: bool = False,
+        config_path: str | Path | None = None,
+        extract_cochange: bool = False,
+    ) -> dict:
+        """
+        Index an Elixir repository (implements BaseIndexer interface).
+
+        This method provides the standard interface for all indexers.
+        For Elixir, it delegates to incremental_index_repository.
+
+        Args:
+            repo_path: Path to the repository to index
+            output_path: Path where the index.json should be saved
+            force: If True, reindex all files regardless of changes
+            verbose: If True, print detailed progress information
+            config_path: Optional path to config.yaml for custom settings
+            extract_cochange: If True, analyze git history for co-change patterns (Elixir-specific)
+
+        Returns:
+            Dictionary with indexing results
+        """
+        # Set verbose flag if specified
+        if verbose:
+            self.verbose = verbose
+
+        # Use incremental indexing (respects force flag)
+        return self.incremental_index_repository(
+            repo_path=str(repo_path),
+            output_path=str(output_path),
+            extract_keywords=True,  # Always extract keywords
+            extract_cochange=extract_cochange,
+            force_full=force,
+        )
+
+    def _index_repository_full(
+        self,
         repo_path: str,
         output_path: str,
         extract_keywords: bool = False,
@@ -347,7 +399,9 @@ class ElixirIndexer:
         extract_cochange: bool = False,
     ):
         """
-        Index an Elixir repository.
+        Index an Elixir repository (full indexing, non-incremental).
+
+        This is the legacy method kept for backward compatibility and internal use.
 
         Args:
             repo_path: Path to the Elixir repository root
@@ -395,12 +449,12 @@ class ElixirIndexer:
 
                 # Initialize extraction method
                 if extraction_method == "bert":
-                    from cicada.elixir.extractors.keybert import KeyBERTExtractor
+                    from cicada.extractors.keybert import KeyBERTExtractor
 
                     keyword_extractor = KeyBERTExtractor(verbose=self.verbose)
                 else:
                     # Use regular (TF-based) extractor as default
-                    from cicada.elixir.extractors.keyword import RegularKeywordExtractor
+                    from cicada.extractors.keyword import RegularKeywordExtractor
 
                     keyword_extractor = RegularKeywordExtractor(verbose=self.verbose)
 
@@ -422,7 +476,7 @@ class ElixirIndexer:
         string_extractor = None
         if extract_string_keywords:
             try:
-                from cicada.elixir.extractors import StringExtractor
+                from cicada.languages.elixir.extractors import StringExtractor
 
                 string_extractor = StringExtractor(min_length=3)
                 if self.verbose:
@@ -652,7 +706,7 @@ class ElixirIndexer:
                                 tree = ts_parser.parse(source_code)
 
                                 # Find the module node
-                                from cicada.elixir.extractors import extract_modules
+                                from cicada.languages.elixir.extractors import extract_modules
 
                                 parsed_modules = extract_modules(tree.root_node, source_code)
                                 if parsed_modules:
@@ -839,7 +893,9 @@ class ElixirIndexer:
                             "behaviours": module_data.get("behaviours", []),
                             "value_mentions": module_data.get("value_mentions", []),
                             "calls": module_data.get("calls", []),
-                            "dependencies": module_dependencies,
+                            "dependencies": [
+                                {"module": mod} for mod in sorted(module_dependencies["modules"])
+                            ],
                         }
 
                         # Add module keywords if extracted
@@ -986,6 +1042,7 @@ class ElixirIndexer:
         compute_timestamps: bool = True,
         extract_cochange: bool = True,
         force_full: bool = False,
+        verbose: bool = True,
     ):
         """
         Incrementally index an Elixir repository using file hashing.
@@ -1002,10 +1059,14 @@ class ElixirIndexer:
             compute_timestamps: If True, compute git history timestamps for functions (default: True)
             extract_cochange: If True, analyze git history for co-change patterns
             force_full: If True, ignore existing hashes and do full reindex
+            verbose: If True, print detailed progress information (default: True)
 
         Returns:
             Dictionary containing the index data
         """
+        # Update verbosity setting from parameter
+        self.verbose = verbose
+
         repo_path_obj = Path(repo_path).resolve()
         output_path_obj = Path(output_path)
         # Use centralized storage directory for hashes
@@ -1048,7 +1109,7 @@ class ElixirIndexer:
         if not existing_index or not existing_hashes:
             if self.verbose:
                 print("No existing index or hashes found. Performing full index...")
-            return self.index_repository(
+            return self._index_repository_full(
                 str(repo_path_obj),
                 str(output_path_obj),
                 extract_keywords,
@@ -1115,12 +1176,12 @@ class ElixirIndexer:
 
                 # Initialize extraction method
                 if extraction_method == "bert":
-                    from cicada.elixir.extractors.keybert import KeyBERTExtractor
+                    from cicada.extractors.keybert import KeyBERTExtractor
 
                     keyword_extractor = KeyBERTExtractor(verbose=self.verbose)
                 else:
                     # Use regular (TF-based) extractor as default
-                    from cicada.elixir.extractors.keyword import RegularKeywordExtractor
+                    from cicada.extractors.keyword import RegularKeywordExtractor
 
                     keyword_extractor = RegularKeywordExtractor(verbose=self.verbose)
 
@@ -1385,7 +1446,9 @@ class ElixirIndexer:
                             "behaviours": module_data.get("behaviours", []),
                             "value_mentions": module_data.get("value_mentions", []),
                             "calls": module_data.get("calls", []),
-                            "dependencies": module_dependencies,
+                            "dependencies": [
+                                {"module": mod} for mod in sorted(module_dependencies["modules"])
+                            ],
                         }
 
                         # Add module keywords if extracted

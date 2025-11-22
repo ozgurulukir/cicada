@@ -15,7 +15,7 @@ from .elixir_repo_factory import create_sample_elixir_repo
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_environment():
     """
-    Create minimal index and config files for tests that need them.
+    Create test data files for tests that need them.
     This runs once per test session before any tests execute.
     """
     # Get the tests directory
@@ -115,8 +115,7 @@ def setup_test_environment():
     yield
 
     # Cleanup happens after all tests complete
-    # Note: Individual tests may create their own index/config files,
-    # but we don't clean up the main ones as they're needed by multiple tests
+    # Note: Individual tests create their own index/config files in tmp_path
 
 
 @pytest.fixture(autouse=True)
@@ -174,3 +173,18 @@ def mock_repo_hash(monkeypatch):
 def elixir_repo(tmp_path):
     """Provision a sample Elixir repository for watcher-related tests."""
     return create_sample_elixir_repo(tmp_path)
+
+
+@pytest.fixture
+def fixtures_dir():
+    """
+    Return the path to the test fixtures directory.
+
+    This fixture can be used by all tests to access test fixtures
+    without hardcoding relative paths.
+
+    Usage:
+        def test_something(fixtures_dir):
+            sample_file = fixtures_dir / "sample.ex"
+    """
+    return Path(__file__).parent / "fixtures"

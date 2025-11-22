@@ -1,3 +1,8 @@
+"""Base keyword extraction classes.
+
+Provides term frequency based keyword extraction that works on any text.
+"""
+
 import sys
 from collections import Counter
 from typing import Any

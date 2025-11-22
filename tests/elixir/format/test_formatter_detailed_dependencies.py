@@ -2,7 +2,7 @@
 
 import json
 
-from cicada.elixir.format import ModuleFormatter
+from cicada.format.formatter import ModuleFormatter
 
 
 def _sample_module_data():

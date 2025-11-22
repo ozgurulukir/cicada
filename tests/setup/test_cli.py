@@ -144,14 +144,20 @@ class TestMain:
             main()
             mock_handler.assert_called_once()
 
-    def test_main_no_args_shows_help(self):
-        """Should show help when no args provided"""
+    def test_main_no_args_shows_help(self, tmp_path):
+        """Should run interactive setup when no args provided in a valid project"""
+        # Create a valid Python project marker
+        (tmp_path / "pyproject.toml").write_text("[project]\nname = 'test'\n")
+
         with (
             patch.object(sys, "argv", ["cicada"]),
-            pytest.raises(SystemExit) as exc_info,
+            patch("pathlib.Path.cwd", return_value=tmp_path),
+            patch("cicada.interactive_setup.show_full_interactive_setup") as mock_setup,
         ):
             main()
-        assert exc_info.value.code == 1
+
+        # Should call interactive setup, not exit
+        mock_setup.assert_called_once_with(tmp_path)
 
     def test_main_with_dot_path_calls_install(self):
         """Should route to install command when path is '.'"""
@@ -222,7 +228,7 @@ class TestHandleEditorSetup:
         assert "Can only specify one tier flag" in captured.err
 
     def test_requires_elixir_project(self, tmp_path, capsys):
-        """Should error if not an Elixir project"""
+        """Should error if not a supported project type"""
         args = make_index_args()
 
         with (
@@ -233,7 +239,7 @@ class TestHandleEditorSetup:
 
         assert exc_info.value.code == 1
         captured = capsys.readouterr()
-        assert "does not appear to be an Elixir project" in captured.err
+        assert "Could not detect project language" in captured.err
 
     def test_fast_flag_sets_regular_extraction(self, mock_elixir_repo):
         """--fast should set extraction to regular + lemmi expansion"""
@@ -464,6 +470,7 @@ class TestHandleIndex:
             patch("cicada.utils.storage.get_index_path"),
             patch("cicada.setup.create_config_yaml") as mock_create_config,
             patch("cicada.indexer.ElixirIndexer") as mock_indexer_class,
+            patch("cicada.languages.LanguageRegistry.get_indexer") as mock_get_indexer,
             patch("builtins.open", MagicMock()),
             patch(
                 "yaml.safe_load",
@@ -479,6 +486,7 @@ class TestHandleIndex:
 
             mock_indexer = MagicMock()
             mock_indexer_class.return_value = mock_indexer
+            mock_get_indexer.return_value = mock_indexer
 
             handle_index(args)
 
@@ -503,6 +511,7 @@ class TestHandleIndex:
             patch("cicada.utils.storage.get_index_path"),
             patch("cicada.setup.create_config_yaml") as mock_create_config,
             patch("cicada.indexer.ElixirIndexer") as mock_indexer_class,
+            patch("cicada.languages.LanguageRegistry.get_indexer") as mock_get_indexer,
             patch("builtins.open", MagicMock()),
             patch(
                 "yaml.safe_load",
@@ -518,6 +527,7 @@ class TestHandleIndex:
 
             mock_indexer = MagicMock()
             mock_indexer_class.return_value = mock_indexer
+            mock_get_indexer.return_value = mock_indexer
 
             handle_index(args)
 

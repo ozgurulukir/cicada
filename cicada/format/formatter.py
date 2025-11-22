@@ -13,6 +13,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from cicada.languages.formatter_registry import get_language_formatter
 from cicada.utils import (
     CallSiteFormatter,
     FunctionGrouper,
@@ -41,8 +42,9 @@ class ModuleFormatter:
             Tuple of (public_grouped, private_grouped) dictionaries keyed by (name, arity)
         """
         functions = data.get("functions", [])
-        public_funcs = [f for f in functions if f["type"] == "def"]
-        private_funcs = [f for f in functions if f["type"] == "defp"]
+        # Support both Elixir (def/defp) and SCIP/Python (public/private) type conventions
+        public_funcs = [f for f in functions if f["type"] in ("def", "public")]
+        private_funcs = [f for f in functions if f["type"] in ("defp", "private")]
 
         return (
             FunctionGrouper.group_by_name_arity(public_funcs),
@@ -211,6 +213,26 @@ class ModuleFormatter:
                 first_para = first_para[:200] + "..."
             lines.extend(["", first_para])
 
+        # Add Classes section if present (Python modules with classes)
+        if data.get("classes"):
+            classes = data["classes"]
+            if classes:
+                lines.extend(["", "**Classes:**"])
+                for cls in classes:
+                    cls_name = cls["name"]
+                    cls_line = cls["line"]
+                    cls_public = cls.get("public_methods", 0)
+                    cls_private = cls.get("private_methods", 0)
+                    lines.append(
+                        f"  • {cls_name} (line {cls_line}) • {cls_public} public • {cls_private} private"
+                    )
+                    # Optionally show class doc as sub-bullet
+                    if cls.get("doc"):
+                        doc_preview = cls["doc"].strip().split("\n")[0][:80]
+                        if len(cls["doc"]) > 80:
+                            doc_preview += "..."
+                        lines.append(f"    {doc_preview}")
+
         private_shown = False
 
         if visibility != "private":
@@ -300,16 +322,27 @@ class ModuleFormatter:
             for (_, _), clauses in sorted(grouped.items())
         ]
 
+        # Calculate function counts if not provided
+        if "public_functions" in data and "private_functions" in data:
+            public_count = data["public_functions"]
+            private_count = data["private_functions"]
+        else:
+            public_count, private_count = ModuleFormatter._count_functions(data)
+
         result = {
             "module": module_name,
             "location": f"{data['file']}:{data['line']}",
             "moduledoc": data.get("moduledoc"),
             "counts": {
-                "public": data["public_functions"],
-                "private": data["private_functions"],
+                "public": public_count,
+                "private": private_count,
             },
             "functions": functions,
         }
+
+        # Add classes if present (Python modules with classes)
+        if data.get("classes"):
+            result["classes"] = data["classes"]
 
         # Include detailed dependencies if provided
         if detailed_dependencies:
@@ -584,7 +617,10 @@ class ModuleFormatter:
 
     @staticmethod
     def _format_function_entry(
-        result: dict[str, Any], single_result: bool, show_relationships: bool
+        result: dict[str, Any],
+        single_result: bool,
+        show_relationships: bool,
+        language: str = "elixir",
     ) -> list[str]:
         """Format a single function search result (either single or multi layout)."""
         module_name = result["module"]
@@ -595,13 +631,19 @@ class ModuleFormatter:
         call_sites = result.get("call_sites", [])
         call_sites_with_examples = result.get("call_sites_with_examples", [])
 
+        # Format function identifier using language-specific formatter
+        language_formatter = get_language_formatter(language)
+        func_identifier = language_formatter.format_function_identifier(
+            module_name, func["name"], func["arity"]
+        )
+
         lines: list[str] = []
 
         if single_result:
             lines.extend(
                 [
                     f"{file_path}:{func['line']}",
-                    f"{module_name}.{func['name']}/{func['arity']}",
+                    func_identifier,
                     f"Type: {sig}",
                 ]
             )
@@ -612,7 +654,7 @@ class ModuleFormatter:
                     "",
                     "---",
                     "",
-                    f"{module_name}.{func['name']}/{func['arity']}",
+                    func_identifier,
                     f"{file_path}:{func['line']} • {func['type']}",
                     "",
                     "Signature:",
@@ -687,6 +729,7 @@ class ModuleFormatter:
         results: list[dict[str, Any]],
         staleness_info: dict | None = None,
         show_relationships: bool = True,
+        language: str = "elixir",
     ) -> str:
         """
         Format function search results as Markdown.
@@ -696,6 +739,7 @@ class ModuleFormatter:
             results: List of function matches with module context
             staleness_info: Optional staleness info (is_stale, age_str)
             show_relationships: Whether to show relationship information (what this calls / what calls this)
+            language: Programming language for formatting function identifiers
 
         Returns:
             Formatted Markdown string
@@ -784,7 +828,9 @@ If this function was deleted:
 
         for result in consolidated_results:
             lines.extend(
-                ModuleFormatter._format_function_entry(result, single_result, show_relationships)
+                ModuleFormatter._format_function_entry(
+                    result, single_result, show_relationships, language
+                )
             )
 
         # Add closing separator for single results
