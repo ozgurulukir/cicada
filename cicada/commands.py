@@ -10,6 +10,9 @@ import argparse
 import sys
 from pathlib import Path
 
+# Import logging utilities
+from cicada.logging_utils import get_verbose_flag
+
 # Import tier resolution functions from centralized module
 from cicada.tier import (
     determine_tier,
@@ -78,7 +81,7 @@ def _setup_and_start_watcher(args, repo_path_str: str) -> None:
         watcher = FileWatcher(
             repo_path=str(repo_path),
             debounce_seconds=getattr(args, "debounce", DEFAULT_WATCH_DEBOUNCE),
-            verbose=True,
+            verbose=get_verbose_flag(args),
             tier=tier,
         )
         watcher.start_watching()
@@ -91,6 +94,14 @@ def _setup_and_start_watcher(args, repo_path_str: str) -> None:
 
 
 def get_argument_parser():
+    # Create a parent parser with common arguments to share across all subcommands
+    common_parser = argparse.ArgumentParser(add_help=False)
+    common_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose output (detailed progress and debugging information)",
+    )
+
     parser = argparse.ArgumentParser(
         prog="cicada",
         description="Cicada - AI-powered Elixir code analysis and search",
@@ -110,6 +121,7 @@ def get_argument_parser():
         "install",
         help="Interactive setup for Cicada",
         description="Interactive setup with editor and model selection",
+        parents=[common_parser],
     )
     install_parser.add_argument(
         "repo",
@@ -167,6 +179,7 @@ def get_argument_parser():
         "server",
         help="Start MCP server (silent mode with defaults)",
         description="Start MCP server with auto-setup using defaults",
+        parents=[common_parser],
     )
     server_parser.add_argument(
         "repo",
@@ -224,6 +237,7 @@ def get_argument_parser():
         "claude",
         help="Setup Cicada for Claude Code editor",
         description="One-command setup for Claude Code with keyword extraction",
+        parents=[common_parser],
     )
     claude_parser.add_argument(
         "--fast",
@@ -245,6 +259,7 @@ def get_argument_parser():
         "cursor",
         help="Setup Cicada for Cursor editor",
         description="One-command setup for Cursor with keyword extraction",
+        parents=[common_parser],
     )
     cursor_parser.add_argument(
         "--fast",
@@ -266,6 +281,7 @@ def get_argument_parser():
         "vs",
         help="Setup Cicada for VS Code editor",
         description="One-command setup for VS Code with keyword extraction",
+        parents=[common_parser],
     )
     vs_parser.add_argument(
         "--fast",
@@ -287,6 +303,7 @@ def get_argument_parser():
         "gemini",
         help="Setup Cicada for Gemini CLI",
         description="One-command setup for Gemini CLI with keyword extraction",
+        parents=[common_parser],
     )
     gemini_parser.add_argument(
         "--fast",
@@ -308,6 +325,7 @@ def get_argument_parser():
         "codex",
         help="Setup Cicada for Codex editor",
         description="One-command setup for Codex with keyword extraction",
+        parents=[common_parser],
     )
     codex_parser.add_argument(
         "--fast",
@@ -329,6 +347,7 @@ def get_argument_parser():
         "watch",
         help="Watch for file changes and automatically reindex",
         description="Watch Elixir source files for changes and trigger automatic incremental reindexing",
+        parents=[common_parser],
     )
     watch_parser.add_argument(
         "repo",
@@ -363,6 +382,7 @@ def get_argument_parser():
         "index",
         help="Index a project repository to extract code symbols",
         description="Index current project repository to extract code symbols",
+        parents=[common_parser],
     )
     index_parser.add_argument(
         "repo",
@@ -444,6 +464,7 @@ def get_argument_parser():
         "index-pr",
         help="Index GitHub pull requests for fast offline lookup",
         description="Index GitHub pull requests for fast offline lookup",
+        parents=[common_parser],
     )
     index_pr_parser.add_argument(
         "repo",
@@ -462,6 +483,7 @@ def get_argument_parser():
         help="Smart code discovery - search by keywords or patterns",
         description="Smart code discovery - the 'Google for code'. Searches by keywords OR patterns automatically, provides broad overview with suggestions.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        parents=[common_parser],
         epilog="""
 Examples:
   cicada query authentication                          # Keyword search
@@ -536,6 +558,7 @@ Examples:
         help="Find potentially unused public functions in Elixir codebase",
         description="Find potentially unused public functions in Elixir codebase",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        parents=[common_parser],
         epilog="""
 Confidence Levels:
   high   - Zero usage, no dynamic call indicators, no behaviors/uses
@@ -566,6 +589,7 @@ Examples:
         help="Remove Cicada configuration and indexes",
         description="Remove Cicada configuration and indexes for current repository",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        parents=[common_parser],
         epilog="""
 Examples:
   cicada clean                   # Remove everything (interactive with confirmation)
@@ -603,6 +627,7 @@ Examples:
         help="Show diagnostic information about Cicada configuration",
         description="Display diagnostic information about Cicada indexes and configuration",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        parents=[common_parser],
         epilog="""
 Examples:
   cicada status              # Check current repository
@@ -620,6 +645,7 @@ Examples:
         "dir",
         help="Show the absolute path to the Cicada storage directory",
         description="Display the absolute path to where Cicada stores configuration and indexes",
+        parents=[common_parser],
     )
     dir_parser.add_argument(
         "repo",
@@ -633,6 +659,7 @@ Examples:
         help="Link current repository to use another repository's index",
         description="Create a link from the current (or target) repository to use an existing index from a source repository",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        parents=[common_parser],
         epilog="""
 Examples:
   cicada link /path/to/source/repo          # Link current repo to source repo's index
@@ -660,6 +687,7 @@ Use cases:
         help="Remove link from repository",
         description="Remove the link from a repository, allowing it to have its own index again",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        parents=[common_parser],
         epilog="""
 Examples:
   cicada unlink              # Remove link from current repo
@@ -879,6 +907,7 @@ def handle_index_main(args) -> None:
     # Perform indexing using unified interface
     # If tier changed, force full reindex to ensure index consistency with new config
     indexer = LanguageRegistry.get_indexer(language)
+    verbose = get_verbose_flag(args)
 
     # Check if indexer supports incremental_index_repository (new unified API)
     if hasattr(indexer, "incremental_index_repository"):
@@ -890,7 +919,7 @@ def handle_index_main(args) -> None:
             compute_timestamps=True,
             extract_cochange=extract_cochange,
             force_full=tier_changed,
-            verbose=True,
+            verbose=verbose,
         )
     else:
         # Fallback to basic interface for legacy indexers
@@ -898,7 +927,7 @@ def handle_index_main(args) -> None:
             repo_path=str(repo_path),
             output_path=str(index_path),
             force=tier_changed,
-            verbose=True,
+            verbose=verbose,
             config_path=str(config_path),
         )
 
@@ -1468,6 +1497,9 @@ def handle_server(args) -> None:
 
     try:
         asyncio.run(async_main())
+    except KeyboardInterrupt:
+        # Graceful shutdown on Ctrl+C, suppress traceback
+        pass
     finally:
         # Ensure watch process is stopped when server exits
         if watch_enabled:
