@@ -146,7 +146,9 @@ class TestPythonSCIPIndexer:
                 with pytest.raises(RuntimeError) as exc_info:
                     indexer._run_scip_python(tmp_path)
 
-                assert "scip-python indexing failed" in str(exc_info.value)
+                error = str(exc_info.value).lower()
+                assert "scip indexing failed" in error
+                assert "failed to index" in error
                 assert "failed to index" in str(exc_info.value)
 
     def test_run_scip_python_file_not_generated(self, indexer, tmp_path):
@@ -182,7 +184,7 @@ class TestPythonSCIPIndexer:
                     indexer._run_scip_python(tmp_path)
 
                 assert "timed out" in str(exc_info.value)
-                assert "10 minutes" in str(exc_info.value)
+                assert "600 seconds" in str(exc_info.value)
 
     def test_run_scip_python_exception_cleanup(self, indexer, tmp_path):
         """Should cleanup temp file on exception."""
@@ -348,7 +350,9 @@ class TestPythonSCIPIndexer:
                     verbose_indexer.index_repository(repo_path, output_path, verbose=True)
 
                     captured = capsys.readouterr()
-                    assert "Indexing Python repository" in captured.out
+                    # Make assertion robust to language name changes
+                    expected_msg = f"indexing {verbose_indexer.get_language_name()} repository"
+                    assert expected_msg in captured.out.lower()
                     assert "SCIP index" in captured.out
                     assert "Index saved to" in captured.out
                     assert "Cleaned up temporary file" in captured.out
@@ -370,7 +374,7 @@ class TestPythonIndexerHelperMethods:
         """Create a verbose indexer."""
         return PythonSCIPIndexer(verbose=True)
 
-    # Tests for _find_python_files
+    # Tests for _find_source_files
 
     def test_find_python_files_basic(self, indexer, tmp_path):
         """Should find Python files in repository."""
@@ -383,7 +387,7 @@ class TestPythonIndexerHelperMethods:
         subdir.mkdir()
         (subdir / "file3.py").touch()
 
-        files = list(indexer._find_python_files(repo))
+        files = list(indexer._find_source_files(repo))
         assert len(files) == 3
 
     def test_find_python_files_excludes_pycache(self, indexer, tmp_path):
@@ -396,7 +400,7 @@ class TestPythonIndexerHelperMethods:
         pycache.mkdir()
         (pycache / "cached.py").touch()
 
-        files = list(indexer._find_python_files(repo))
+        files = list(indexer._find_source_files(repo))
         assert len(files) == 1
         assert files[0].name == "main.py"
 
@@ -413,7 +417,7 @@ class TestPythonIndexerHelperMethods:
         venv2.mkdir()
         (venv2 / "lib.py").touch()
 
-        files = list(indexer._find_python_files(repo))
+        files = list(indexer._find_source_files(repo))
         assert len(files) == 1
         assert files[0].name == "main.py"
 
@@ -427,7 +431,7 @@ class TestPythonIndexerHelperMethods:
         deep.mkdir(parents=True)
         (deep / "deep.py").touch()
 
-        files = list(indexer._find_python_files(repo))
+        files = list(indexer._find_source_files(repo))
         assert len(files) == 2
         file_names = [f.name for f in files]
         assert "root.py" in file_names
@@ -438,7 +442,7 @@ class TestPythonIndexerHelperMethods:
         repo = tmp_path / "repo"
         repo.mkdir()
 
-        files = list(indexer._find_python_files(repo))
+        files = list(indexer._find_source_files(repo))
         assert files == []
 
     # Tests for _extract_string_keywords
@@ -581,7 +585,7 @@ class TestPythonIndexerHelperMethods:
             }
         }
 
-        with patch("cicada.languages.python.indexer.GitHelper") as mock_git_helper_class:
+        with patch("cicada.languages.scip.indexer.GitHelper") as mock_git_helper_class:
             mock_git_helper = MagicMock()
             mock_git_helper.get_functions_evolution_batch.return_value = {
                 "test_func": {
@@ -635,7 +639,7 @@ class TestPythonIndexerHelperMethods:
             }
         }
 
-        with patch("cicada.languages.python.indexer.GitHelper") as mock_git_helper_class:
+        with patch("cicada.languages.scip.indexer.GitHelper") as mock_git_helper_class:
             mock_git_helper_class.side_effect = Exception("Not a git repo")
 
             verbose_indexer._compute_timestamps(index, repo)
@@ -663,7 +667,7 @@ class TestPythonIndexerHelperMethods:
             }
         }
 
-        with patch("cicada.languages.python.indexer.GitHelper") as mock_git_helper_class:
+        with patch("cicada.languages.scip.indexer.GitHelper") as mock_git_helper_class:
             mock_git_helper = MagicMock()
             mock_git_helper_class.return_value = mock_git_helper
 
@@ -697,7 +701,7 @@ class TestPythonIndexerHelperMethods:
             }
         }
 
-        with patch("cicada.languages.python.indexer.GitHelper") as mock_git_helper_class:
+        with patch("cicada.languages.scip.indexer.GitHelper") as mock_git_helper_class:
             mock_git_helper = MagicMock()
             mock_git_helper.get_functions_evolution_batch.return_value = {}
             mock_git_helper_class.return_value = mock_git_helper
@@ -723,7 +727,7 @@ class TestPythonIndexerHelperMethods:
             }
         }
 
-        with patch("cicada.languages.python.indexer.CoChangeAnalyzer") as mock_analyzer_class:
+        with patch("cicada.languages.scip.indexer.CoChangeAnalyzer") as mock_analyzer_class:
             mock_analyzer = MagicMock()
             mock_analyzer.analyze_repository.return_value = {
                 "metadata": {"file_pairs": 1, "function_pairs": 0, "commit_count": 10},
@@ -745,7 +749,7 @@ class TestPythonIndexerHelperMethods:
 
         index = {"modules": {}}
 
-        with patch("cicada.languages.python.indexer.CoChangeAnalyzer") as mock_analyzer_class:
+        with patch("cicada.languages.scip.indexer.CoChangeAnalyzer") as mock_analyzer_class:
             mock_analyzer_class.side_effect = Exception("Git error")
 
             verbose_indexer._extract_cochange(index, repo)
@@ -768,7 +772,7 @@ class TestPythonIndexerHelperMethods:
             }
         }
 
-        with patch("cicada.languages.python.indexer.CoChangeAnalyzer") as mock_analyzer_class:
+        with patch("cicada.languages.scip.indexer.CoChangeAnalyzer") as mock_analyzer_class:
             mock_analyzer = MagicMock()
             mock_analyzer.analyze_repository.return_value = {
                 "metadata": {"file_pairs": 1, "function_pairs": 0, "commit_count": 5},
@@ -808,7 +812,7 @@ class TestPythonIndexerHelperMethods:
             }
         }
 
-        with patch("cicada.languages.python.indexer.CoChangeAnalyzer") as mock_analyzer_class:
+        with patch("cicada.languages.scip.indexer.CoChangeAnalyzer") as mock_analyzer_class:
             mock_analyzer = MagicMock()
             mock_analyzer.analyze_repository.return_value = {
                 "metadata": {"file_pairs": 15, "function_pairs": 0, "commit_count": 10},
@@ -885,9 +889,9 @@ class TestPythonIndexerHelperMethods:
             json.dump(initial_index, f)
 
         # Mock the file finding and hash comparison to simulate no changes
-        with patch.object(verbose_indexer, "_find_python_files", return_value=[py_file]):
+        with patch.object(verbose_indexer, "_find_source_files", return_value=[py_file]):
             with patch(
-                "cicada.languages.python.indexer.detect_file_changes", return_value=([], [], [])
+                "cicada.languages.scip.indexer.detect_file_changes", return_value=([], [], [])
             ):
                 result = verbose_indexer.incremental_index_repository(
                     repo_path=str(repo),
