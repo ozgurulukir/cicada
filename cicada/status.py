@@ -5,7 +5,6 @@ Cicada Status Command.
 Provides diagnostic information about Cicada configuration and indexes.
 """
 
-import json
 from datetime import datetime
 from pathlib import Path
 
