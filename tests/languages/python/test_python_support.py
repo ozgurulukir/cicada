@@ -8,7 +8,6 @@ import pytest
 
 from cicada.setup import detect_project_language
 from cicada.languages.python.scip_installer import SCIPPythonInstaller
-from cicada.languages.scip import scip_pb2
 from cicada.languages.scip.converter import SCIPConverter
 
 
@@ -99,68 +98,6 @@ class TestSCIPConverter:
         """Create a SCIPConverter instance."""
         return SCIPConverter()
 
-    @pytest.fixture
-    def mock_doc(self):
-        """Create a mock SCIP Document with test symbols."""
-        doc = scip_pb2.Document()
-        doc.relative_path = "test.py"
-        doc.language = "python"
-
-        # Add a class symbol
-        class_symbol = doc.symbols.add()
-        class_symbol.symbol = "scip-python python test 1.0 test/TestClass#"
-        class_symbol.documentation.append("Test class documentation")
-
-        # Add a method with parameters
-        method_symbol = doc.symbols.add()
-        method_symbol.symbol = "scip-python python test 1.0 test/TestClass#test_method()."
-        method_symbol.documentation.append("Test method documentation")
-
-        # Add method parameters
-        param1 = doc.symbols.add()
-        param1.symbol = "scip-python python test 1.0 test/TestClass#test_method().(self)"
-
-        param2 = doc.symbols.add()
-        param2.symbol = "scip-python python test 1.0 test/TestClass#test_method().(arg1)"
-
-        param3 = doc.symbols.add()
-        param3.symbol = "scip-python python test 1.0 test/TestClass#test_method().(arg2)"
-
-        # Add a function with no parameters
-        func_symbol = doc.symbols.add()
-        func_symbol.symbol = "scip-python python test 1.0 test/no_params()."
-        func_symbol.documentation.append("Function with no parameters")
-
-        # Add a function with one parameter
-        func2_symbol = doc.symbols.add()
-        func2_symbol.symbol = "scip-python python test 1.0 test/with_param()."
-
-        func2_param = doc.symbols.add()
-        func2_param.symbol = "scip-python python test 1.0 test/with_param().(data)"
-
-        # Add occurrences with definition markers
-        occ1 = doc.occurrences.add()
-        occ1.symbol = "scip-python python test 1.0 test/TestClass#"
-        occ1.range.extend([0, 0, 9])
-        occ1.symbol_roles = scip_pb2.SymbolRole.Definition
-
-        occ2 = doc.occurrences.add()
-        occ2.symbol = "scip-python python test 1.0 test/TestClass#test_method()."
-        occ2.range.extend([4, 4, 15])  # 0-indexed: line 4 -> 1-indexed: line 5
-        occ2.symbol_roles = scip_pb2.SymbolRole.Definition
-
-        occ3 = doc.occurrences.add()
-        occ3.symbol = "scip-python python test 1.0 test/no_params()."
-        occ3.range.extend([10, 0, 9])
-        occ3.symbol_roles = scip_pb2.SymbolRole.Definition
-
-        occ4 = doc.occurrences.add()
-        occ4.symbol = "scip-python python test 1.0 test/with_param()."
-        occ4.range.extend([15, 0, 10])
-        occ4.symbol_roles = scip_pb2.SymbolRole.Definition
-
-        return doc
-
     def test_get_symbol_type_class(self, converter):
         """Should identify class symbols."""
         symbol = "scip-python python test 1.0 module/MyClass#"
@@ -221,66 +158,6 @@ class TestSCIPConverter:
         symbol = "scip-python python test 1.0 module/Class#__init__()."
         assert converter._is_private(symbol) is False
 
-    def test_extract_args_with_multiple_params(self, converter, mock_doc):
-        """Should extract all parameters in order."""
-        func_symbol = "scip-python python test 1.0 test/TestClass#test_method()."
-        args = converter._extract_args(func_symbol, mock_doc)
-        assert args == ["self", "arg1", "arg2"]
-
-    def test_extract_args_with_no_params(self, converter, mock_doc):
-        """Should return empty list for parameterless functions."""
-        func_symbol = "scip-python python test 1.0 test/no_params()."
-        args = converter._extract_args(func_symbol, mock_doc)
-        assert args == []
-
-    def test_extract_args_with_single_param(self, converter, mock_doc):
-        """Should extract single parameter."""
-        func_symbol = "scip-python python test 1.0 test/with_param()."
-        args = converter._extract_args(func_symbol, mock_doc)
-        assert args == ["data"]
-
-    def test_convert_function_has_correct_arity(self, converter, mock_doc):
-        """Should calculate arity correctly from extracted args."""
-        # Get the method symbol
-        method_symbol = None
-        for sym in mock_doc.symbols:
-            if sym.symbol == "scip-python python test 1.0 test/TestClass#test_method().":
-                method_symbol = sym
-                break
-
-        assert method_symbol is not None
-        symbol_map = {}
-        func_data = converter._convert_function(method_symbol, mock_doc, symbol_map)
-
-        assert func_data["name"] == "test_method"
-        assert func_data["arity"] == 3
-        assert func_data["args"] == ["self", "arg1", "arg2"]
-
-    def test_convert_function_with_no_args(self, converter, mock_doc):
-        """Should handle functions with no parameters."""
-        # Get the no-param function symbol
-        func_symbol = None
-        for sym in mock_doc.symbols:
-            if sym.symbol == "scip-python python test 1.0 test/no_params().":
-                func_symbol = sym
-                break
-
-        assert func_symbol is not None
-        symbol_map = {}
-        func_data = converter._convert_function(func_symbol, mock_doc, symbol_map)
-
-        assert func_data["name"] == "no_params"
-        assert func_data["arity"] == 0
-        assert func_data["args"] == []
-
-    def test_get_definition_line(self, converter, mock_doc):
-        """Should extract correct line number from occurrences."""
-        symbol = "scip-python python test 1.0 test/TestClass#test_method()."
-        line = converter._get_definition_line(symbol, mock_doc)
-        assert line == 5
-
-    def test_get_definition_line_fallback(self, converter, mock_doc):
-        """Should return 1 if no definition occurrence found."""
-        symbol = "scip-python python test 1.0 test/NonExistent#method()."
-        line = converter._get_definition_line(symbol, mock_doc)
-        assert line == 1
+    # Note: Tests for _extract_args, _convert_function, and _get_definition_line
+    # were removed as these methods have been refactored in the SCIP converter.
+    # The new implementation is tested in test_scip_converter.py
