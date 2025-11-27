@@ -11,6 +11,7 @@ from typing import Any, cast
 from mcp.types import TextContent
 
 from cicada.mcp.pattern_utils import FunctionPattern, parse_function_patterns
+from cicada.utils.index_lookup import find_callers_from_reverse_index
 
 
 class FunctionSearchHandler:
@@ -177,6 +178,50 @@ class FunctionSearchHandler:
 
         return best_match
 
+    def _find_call_sites_from_reverse_index(
+        self,
+        target_module: str,
+        target_function: str,
+    ) -> list | None:
+        """
+        Fast path: find call sites using pre-computed reverse_calls index.
+
+        Uses shared utility for key matching and deduplication.
+
+        Args:
+            target_module: The module containing the function
+            target_function: The function name
+
+        Returns:
+            List of call sites, or None if reverse_calls index not available
+        """
+        callers = find_callers_from_reverse_index(self.index, target_module, target_function)
+        if callers is None:
+            return None
+
+        # Transform callers to call site format
+        call_sites = []
+        for caller in callers:
+            calling_function = None
+            if caller["function"]:
+                calling_function = {
+                    "name": caller["function"],
+                    "arity": caller["arity"],
+                }
+
+            call_sites.append(
+                {
+                    "calling_module": caller["module"],
+                    "calling_function": calling_function,
+                    "file": caller["file"],
+                    "line": caller["line"],
+                    "call_type": "qualified",
+                    "alias_used": None,
+                }
+            )
+
+        return call_sites if call_sites else None
+
     def _find_call_sites(self, target_module: str, target_function: str, target_arity: int) -> list:
         """
         Find all locations where a function is called.
@@ -189,6 +234,12 @@ class FunctionSearchHandler:
         Returns:
             List of call sites with resolved module names
         """
+        # Fast path: use reverse_calls index if available
+        fast_result = self._find_call_sites_from_reverse_index(target_module, target_function)
+        if fast_result is not None:
+            return fast_result
+
+        # Fallback: O(n) scan for indexes without reverse_calls
         call_sites = []
 
         # Find the function definition line to filter out @spec/@doc
@@ -617,6 +668,7 @@ class FunctionSearchHandler:
         module_path: str | None = None,
         what_it_calls: bool = False,
         include_code_context: bool = False,
+        format_opts: dict | None = None,
     ) -> list[TextContent]:
         """
         Search for a function across all modules and return matches with call sites.
@@ -754,7 +806,13 @@ class FunctionSearchHandler:
             result = ModuleFormatter.format_function_results_json(function_name, results)
         else:
             result = ModuleFormatter.format_function_results_markdown(
-                function_name, results, staleness_info, what_it_calls, language, private_suggestion
+                function_name,
+                results,
+                staleness_info,
+                what_it_calls,
+                language,
+                private_suggestion,
+                format_opts=format_opts,
             )
 
         return [TextContent(type="text", text=result)]

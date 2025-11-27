@@ -6,6 +6,7 @@ Identifies potentially unused public functions using the indexed codebase data.
 Author: Cursor(Auto)
 """
 
+from cicada.utils.index_lookup import find_callers_from_reverse_index
 from cicada.utils.path_utils import is_test_file
 
 
@@ -152,6 +153,32 @@ class DeadCodeAnalyzer:
             "candidates": candidates,
         }
 
+    def _find_usages_from_reverse_index(
+        self,
+        target_module: str,
+        target_function: str,
+    ) -> int | None:
+        """
+        Fast usage count lookup using pre-computed reverse_calls index.
+
+        Uses shared utility for key matching and deduplication.
+
+        Note: While primary lookups are O(1), a fallback scan for matching keys
+        makes worst-case complexity O(N) where N is the number of keys in reverse_calls.
+
+        Args:
+            target_module: Module containing the function
+            target_function: Function name
+
+        Returns:
+            Number of call sites found, or None if reverse_calls not available
+        """
+        callers = find_callers_from_reverse_index(self.index, target_module, target_function)
+        if callers is None:
+            return None
+
+        return len(callers)
+
     def _find_usages(self, target_module: str, target_function: str, target_arity: int) -> int:
         """
         Find the number of times a function is called across the codebase.
@@ -167,6 +194,12 @@ class DeadCodeAnalyzer:
         Returns:
             Number of call sites found
         """
+        # Fast path: use reverse_calls index if available
+        fast_count = self._find_usages_from_reverse_index(target_module, target_function)
+        if fast_count is not None:
+            return fast_count
+
+        # Fallback: O(n) scan for indexes without reverse_calls
         call_count = 0
 
         # Get the function definition line to filter out @spec/@doc
