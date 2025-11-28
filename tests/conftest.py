@@ -254,7 +254,12 @@ def pytest_collection_modifyitems(items):
             # Add xdist_group marker to run all such tests in the same worker
             item.add_marker(pytest.mark.xdist_group(name="git_bundle_serial"))
 
-        # Group all incremental indexing tests to run serially
-        # These tests have shared state issues when run in parallel
-        if "incremental" in item.name.lower():
-            item.add_marker(pytest.mark.xdist_group(name="incremental_serial"))
+        # Group all incremental indexing and keyword extraction tests to run serially
+        # These tests have shared state issues (keyword extractor global state)
+        # when run in parallel
+        if "incremental" in item.name.lower() or "keyword" in item.name.lower():
+            item.add_marker(pytest.mark.xdist_group(name="indexer_serial"))
+
+        # Also group tests in test_keybert.py (they all use the keyword extractor)
+        if "test_keybert" in str(item.fspath):
+            item.add_marker(pytest.mark.xdist_group(name="indexer_serial"))

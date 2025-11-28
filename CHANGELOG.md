@@ -65,6 +65,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `--quiet` flag for background watch processes
 - Separate keyword extraction phase for better timing visibility
 
+**Output Verbosity Reduction (#194)**
+- Replace verbose relevance labels with percentages (labels in verbose mode)
+- Compact match indicators: `auth(d)`, `login(s)` instead of `"Matched: *auth*, *login*"`
+- Convert ASCII box-drawing tier headers to markdown in dead code output
+- Shorten error messages to one-liners with actionable suggestions
+- Add return types to function listings (full specs in verbose mode)
+- Reduce suggestions from 5 to 2, co-change entries from 5 to 3
+- Change timestamp format from "Modified: X ago" to "X old"
+
 ### Fixed
 
 **Graceful Shutdown for Ctrl+C (#191)**
