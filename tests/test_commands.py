@@ -488,7 +488,7 @@ class TestVerboseFlag:
         assert hasattr(args, "verbose")
         assert args.verbose is False
 
-    @pytest.mark.parametrize("command", ["index", "watch", "query authentication"])
+    @pytest.mark.parametrize("command", ["index", "watch"])
     def test_verbose_flag_on_all_commands(self, command):
         """Test that verbose flag works with all commands."""
         parser = get_argument_parser()
@@ -589,69 +589,6 @@ class TestVerboseFlag:
 # ============================================================================
 # SECTION 14: Test Command Handlers
 # ============================================================================
-
-
-class TestHandleQuery:
-    """Test handle_query command."""
-
-    @patch("cicada.utils.load_index")
-    @patch("cicada.utils.get_index_path")
-    def test_query_no_index(self, mock_get_path, mock_load, capsys):
-        """Test query fails when index doesn't exist."""
-        from cicada.commands import handle_query
-
-        mock_path = MagicMock()
-        mock_path.exists.return_value = False
-        mock_get_path.return_value = mock_path
-
-        parser = get_argument_parser()
-        args = parser.parse_args(["query", "test"])
-
-        with pytest.raises(SystemExit) as exc:
-            handle_query(args)
-        assert exc.value.code == 1
-
-    @patch("cicada.query.QueryOrchestrator")
-    @patch("cicada.utils.load_index")
-    @patch("cicada.utils.get_index_path")
-    def test_query_no_keywords(self, mock_get_path, mock_load, mock_orch, capsys):
-        """Test query fails when index has no keywords."""
-        from cicada.commands import handle_query
-
-        mock_path = MagicMock()
-        mock_path.exists.return_value = True
-        mock_get_path.return_value = mock_path
-        mock_load.return_value = {"modules": {"TestMod": {}}}  # No keywords
-
-        parser = get_argument_parser()
-        args = parser.parse_args(["query", "test"])
-
-        with pytest.raises(SystemExit) as exc:
-            handle_query(args)
-        assert exc.value.code == 1
-
-    @patch("cicada.query.QueryOrchestrator")
-    @patch("cicada.utils.load_index")
-    @patch("cicada.utils.get_index_path")
-    def test_query_success(self, mock_get_path, mock_load, mock_orch, capsys):
-        """Test successful query execution."""
-        from cicada.commands import handle_query
-
-        mock_path = MagicMock()
-        mock_path.exists.return_value = True
-        mock_get_path.return_value = mock_path
-        mock_load.return_value = {"modules": {"TestMod": {"keywords": {"test": 1.0}}}}
-
-        mock_instance = MagicMock()
-        mock_instance.execute_query.return_value = "Results found"
-        mock_orch.return_value = mock_instance
-
-        parser = get_argument_parser()
-        args = parser.parse_args(["query", "test"])
-        handle_query(args)
-
-        captured = capsys.readouterr()
-        assert "Results found" in captured.out
 
 
 class TestHandleClean:
@@ -1036,6 +973,50 @@ class TestHandleIndexMain:
 
             mock_indexer.index_repository.assert_called_once()
 
+    @patch("cicada.languages.LanguageRegistry.get_indexer")
+    def test_index_main_keyboard_interrupt_graceful_shutdown(self, mock_get_indexer):
+        """Test that KeyboardInterrupt during indexing exits gracefully with code 130."""
+        from cicada.commands import handle_index_main
+
+        mock_indexer = MagicMock()
+        mock_indexer.incremental_index_repository = MagicMock(side_effect=KeyboardInterrupt)
+        mock_get_indexer.return_value = mock_indexer
+
+        with TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            (tmpdir_path / "mix.exs").touch()
+
+            parser = get_argument_parser()
+            args = parser.parse_args(["index", "--force", "--fast", tmpdir])
+
+            with patch("cicada.setup.detect_project_language", return_value="elixir"):
+                with pytest.raises(SystemExit) as exc_info:
+                    handle_index_main(args)
+
+            assert exc_info.value.code == 130
+
+    @patch("cicada.languages.LanguageRegistry.get_indexer")
+    def test_index_main_keyboard_interrupt_legacy_indexer(self, mock_get_indexer):
+        """Test KeyboardInterrupt with legacy indexer (no incremental_index_repository)."""
+        from cicada.commands import handle_index_main
+
+        mock_indexer = MagicMock(spec=[])  # No incremental_index_repository
+        mock_indexer.index_repository = MagicMock(side_effect=KeyboardInterrupt)
+        mock_get_indexer.return_value = mock_indexer
+
+        with TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            (tmpdir_path / "mix.exs").touch()
+
+            parser = get_argument_parser()
+            args = parser.parse_args(["index", "--force", "--fast", tmpdir])
+
+            with patch("cicada.setup.detect_project_language", return_value="elixir"):
+                with pytest.raises(SystemExit) as exc_info:
+                    handle_index_main(args)
+
+            assert exc_info.value.code == 130
+
 
 class TestHandleServerHelpers:
     """Test server helper functions."""
@@ -1216,49 +1197,3 @@ class TestHandleUnlinkErrors:
 
         captured = capsys.readouterr()
         assert "Unexpected error" in captured.err
-
-
-class TestHandleQueryExtended:
-    """Extended tests for handle_query."""
-
-    @patch("cicada.query.QueryOrchestrator")
-    @patch("cicada.utils.load_index")
-    @patch("cicada.utils.get_index_path")
-    def test_query_load_error(self, mock_get_path, mock_load, mock_orch, capsys):
-        """Test query with index load error."""
-        from cicada.commands import handle_query
-
-        mock_path = MagicMock()
-        mock_path.exists.return_value = True
-        mock_get_path.return_value = mock_path
-        mock_load.side_effect = Exception("Corrupted index")
-
-        parser = get_argument_parser()
-        args = parser.parse_args(["query", "test"])
-
-        with pytest.raises(SystemExit) as exc:
-            handle_query(args)
-        assert exc.value.code == 1
-
-    @patch("cicada.query.QueryOrchestrator")
-    @patch("cicada.utils.load_index")
-    @patch("cicada.utils.get_index_path")
-    def test_query_json_format(self, mock_get_path, mock_load, mock_orch, capsys):
-        """Test query with JSON format output."""
-        from cicada.commands import handle_query
-
-        mock_path = MagicMock()
-        mock_path.exists.return_value = True
-        mock_get_path.return_value = mock_path
-        mock_load.return_value = {"modules": {"TestMod": {"keywords": {"test": 1.0}}}}
-
-        mock_instance = MagicMock()
-        mock_instance.execute_query.return_value = '{"results": []}'
-        mock_orch.return_value = mock_instance
-
-        parser = get_argument_parser()
-        args = parser.parse_args(["query", "--format", "json", "test"])
-        handle_query(args)
-
-        captured = capsys.readouterr()
-        assert '{"results": []}' in captured.out

@@ -22,6 +22,9 @@ from cicada.utils import (
 )
 from cicada.utils.truncation import TruncationHelper
 
+# Display limits for compact output
+MAX_COCHANGE_FILES = 3  # Maximum co-change files to show before truncating
+
 
 class ModuleFormatter:
     """Formats Cicada module data in various output formats."""
@@ -162,12 +165,16 @@ class ModuleFormatter:
         for (name, arity), clauses in sorted(grouped_funcs.items(), key=lambda x: x[1][0]["line"]):
             func = clauses[0]
             if include_specs:
-                # Full signature
+                # Full signature in verbose mode
                 func_sig = SignatureBuilder.build(func)
                 lines.append(f"{func['line']:>5}: {func_sig}")
             else:
-                # Compact: just name/arity
-                lines.append(f"{func['line']:>5}: {name}/{arity}")
+                # Compact: name/arity with return type if available
+                return_type = SignatureBuilder.get_return_type(func)
+                if return_type:
+                    lines.append(f"{func['line']:>5}: {name}/{arity} → {return_type}")
+                else:
+                    lines.append(f"{func['line']:>5}: {name}/{arity}")
             lines.append("")
         return True
 
@@ -321,20 +328,16 @@ class ModuleFormatter:
         private_shown = False
         include_specs = opts.get("include_specs", False)
 
-        # Skip function sections for type aliases (they don't have functions)
-        if module_kind != "type_alias":
-            if visibility != "private":
-                ModuleFormatter._append_function_section(
-                    lines, public_grouped, "Public", include_specs
-                )
+        if visibility != "private":
+            ModuleFormatter._append_function_section(lines, public_grouped, "Public", include_specs)
 
-            if visibility in ["all", "private"]:
-                private_shown = ModuleFormatter._append_function_section(
-                    lines, private_grouped, "Private", include_specs
-                )
+        if visibility in ["all", "private"]:
+            private_shown = ModuleFormatter._append_function_section(
+                lines, private_grouped, "Private", include_specs
+            )
 
-            if visibility == "private" and not private_shown:
-                lines.extend(["", "*No private functions found*"])
+        if visibility == "private" and not private_shown:
+            lines.extend(["", "*No private functions found*"])
 
         # Add detailed dependencies if provided
         if detailed_dependencies:
@@ -370,6 +373,17 @@ class ModuleFormatter:
                     for sig in func_sigs:
                         lines.append(f"  • {sig}")
                     lines.append("")
+
+        # Add co-change files if present (show top 3 for compactness)
+        cochange_files = data.get("cochange_files", [])
+        if cochange_files:
+            lines.extend(["", "---", "", "## Often Changed With"])
+            lines.append("")
+            for cf in cochange_files[:MAX_COCHANGE_FILES]:
+                module_name_display = cf.get("module") or cf["file"].split("/")[-1]
+                lines.append(f"  • {module_name_display} ({cf['count']} commits)")
+            if len(cochange_files) > MAX_COCHANGE_FILES:
+                lines.append(f"  ... and {len(cochange_files) - MAX_COCHANGE_FILES} more")
 
         return "\n".join(lines)
 
@@ -873,6 +887,25 @@ class ModuleFormatter:
         return lines
 
     @staticmethod
+    def _split_function_name_to_keywords(func_name: str) -> list[str]:
+        """
+        Split a function name into keywords for semantic search.
+
+        Examples:
+            _extract_cochange -> ['extract', 'cochange']
+            getUserData -> ['get', 'user', 'data']
+            create_user -> ['create', 'user']
+        """
+        import re
+
+        # Remove leading underscores
+        name = func_name.lstrip("_")
+        # Split on underscores and camelCase boundaries
+        parts = re.split(r"_|(?<=[a-z])(?=[A-Z])", name)
+        # Filter empty strings and lowercase all parts
+        return [p.lower() for p in parts if p]
+
+    @staticmethod
     def format_function_results_markdown(
         function_name: str,
         results: list[dict[str, Any]],
@@ -881,6 +914,7 @@ class ModuleFormatter:
         language: str = "elixir",
         private_suggestion: str | None = None,
         format_opts: dict | None = None,
+        fallback_note: str | None = None,
     ) -> str:
         """
         Format function search results as Markdown.
@@ -893,6 +927,7 @@ class ModuleFormatter:
             language: Programming language for formatting function identifiers
             private_suggestion: Optional suggestion for private function pattern
             format_opts: Optional dict with include_docs, include_specs for compact output
+            fallback_note: Optional note about fallback search (e.g., "No matches in X, showing all")
 
         Returns:
             Formatted Markdown string
@@ -900,6 +935,15 @@ class ModuleFormatter:
         if not results:
             # Extract just the function name without module/arity for suggestions
             func_only = function_name.split(".")[-1].split("/")[0]
+
+            # Split function name into keywords for semantic search
+            keywords = ModuleFormatter._split_function_name_to_keywords(func_only)
+            if len(keywords) > 1:
+                keywords_str = ", ".join(f"'{k}'" for k in keywords)
+                query_suggestion = f"query([{keywords_str}])"
+            else:
+                # Single keyword: use processed keyword for consistency with splitting logic
+                query_suggestion = f"query(['{keywords[0] if keywords else func_only.lower()}'])"
 
             # Build error message
             error_parts = []
@@ -911,44 +955,15 @@ class ModuleFormatter:
                     f"   Please ask the user to run: cicada index\n"
                 )
 
-            error_parts.append(
-                f"""Function Not Found
-
-**Query:** `{function_name}`
-"""
-            )
-
+            # Compact one-liner error with actionable suggestions
             if private_suggestion:
                 error_parts.append(
-                    f"""## Did you mean private functions?
-
-  • **Try:** `{private_suggestion}` (searches private functions with _ prefix)
-
-No public functions match this pattern, but private functions do.
-"""
+                    f"Not found: `{function_name}`. Try: `{private_suggestion}` (private) | `*{func_only}*` | {query_suggestion}"
                 )
-
-            suggestions_header = "## Other suggestions:" if private_suggestion else "## Try:"
-
-            error_parts.append(
-                f"""{suggestions_header}
-
-  • Search without arity: `{func_only}` (if you used /{'{arity}'})
-  • Search without module: `{func_only}` (searches all modules)
-  • Wildcard search: `*{func_only}*` or `{func_only}*`
-  • Semantic search: query(['{func_only.lower()}'])
-  • Check spelling (function names are case-sensitive)
-
-Tip: If you're exploring code, try query first to discover functions by what they do.
-
-## Was this function recently removed?
-
-If this function was deleted:
-  • Check recent PRs: get_file_pr_history("<file_path>")
-  • Search git history for the function name
-  • Find what replaced it: query(['<concept>'])
-"""
-            )
+            else:
+                error_parts.append(
+                    f"Not found: `{function_name}`. Try: `*{func_only}*` | {query_suggestion}"
+                )
 
             return "\n".join(error_parts)
 
@@ -985,12 +1000,20 @@ If this function was deleted:
         # For single results (e.g., MFA search), use simpler header
         if single_result:
             lines.append("---")
+            # Add fallback note if present (even for single result)
+            if fallback_note:
+                lines.append(f"({fallback_note})")
+                lines.append("")
         else:
+            # Add fallback note to the found count line if present
+            found_line = f"Found {len(consolidated_results)} match(es):"
+            if fallback_note:
+                found_line = f"Found {len(consolidated_results)} match(es) ({fallback_note}):"
             lines.extend(
                 [
                     f"Functions matching {function_name}",
                     "",
-                    f"Found {len(consolidated_results)} match(es):",
+                    found_line,
                 ]
             )
 

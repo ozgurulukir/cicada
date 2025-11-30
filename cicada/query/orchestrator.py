@@ -94,16 +94,19 @@ class QueryOrchestrator:
         UNLESS they contain pattern syntax (wildcards, OR, module qualifiers),
         in which case they are preserved as-is to avoid breaking patterns.
 
+        Supports synonym groups: [["login", "authenticate"], "user"] means
+        "login OR authenticate" AND "user".
+
         Examples:
         - "agent execution" → ["agent", "execution"] (two keywords)
         - ["agent", "execution"] → ["agent", "execution"] (two keywords)
+        - [["login", "auth"], "user"] → [["login", "auth"], "user"] (synonyms)
         - '"agent execution"' → ["agent execution"] (one exact phrase keyword)
         - "login | auth" → ["login | auth"] (OR pattern, not tokenized)
         - "ThenvoiCom.Agent*" → ["ThenvoiCom.Agent*"] (wildcard pattern, not tokenized)
-        - ["user", ["auth", "login"]] → "user" (keyword), "auth"/"login" (synonym group)
 
         Args:
-            query: Query string, list of strings, or mixed list with nested synonym lists
+            query: Query string, list of query strings, or list with synonym groups
 
         Returns:
             QueryStrategy with search configuration
@@ -120,7 +123,11 @@ class QueryOrchestrator:
             )
 
             # If pattern syntax detected, don't tokenize to preserve the pattern
-            queries = [query] if has_pattern_syntax else self._tokenize_query(query)
+            if has_pattern_syntax:
+                queries: list[str | list[str]] = [query]
+            else:
+                # _tokenize_query returns list[str], convert to list[str | list[str]]
+                queries = list(self._tokenize_query(query))  # type: ignore[assignment]
         else:
             queries = query
 
@@ -130,14 +137,13 @@ class QueryOrchestrator:
         search_patterns: list[str] = []
 
         for q in queries:
+            # Handle synonym groups (lists of strings)
             if isinstance(q, list):
-                # Nested list is treated as a group of synonym keywords
-                # Always use keyword search for nested lists (even if they contain pattern-like strings)
-                use_keyword_search = True
-                # Filter empty strings from nested list
-                cleaned_group = [k.strip() for k in q if isinstance(k, str) and k.strip()]
-                if cleaned_group:
-                    search_keywords.append(cleaned_group)
+                # This is a synonym group - all items are keywords
+                normalized_synonyms = [s.strip() for s in q if s.strip()]
+                if normalized_synonyms:
+                    use_keyword_search = True
+                    search_keywords.append(normalized_synonyms)
                 continue
 
             q_normalized = q.strip()
@@ -531,12 +537,14 @@ class QueryOrchestrator:
         """
         Generate smart next-step suggestions based on results.
 
+        Prioritizes contextual, actionable suggestions over generic fillers.
+
         Args:
             query: Original query
             results: Search results
 
         Returns:
-            List of suggestion strings
+            List of suggestion strings (max 2)
         """
         suggestions = []
 
@@ -547,38 +555,36 @@ class QueryOrchestrator:
                 suggestions.append(f"search_function('{top.function}', module_path='{top.module}')")
             suggestions.append(f"search_module('{top.module}')")
 
-        # Query-specific suggestions based on content
-        query_text = self._normalize_query_text(query)
-
-        # SQL/database keywords
-        if self._is_sql_related_query(query_text):
-            suggestions.append("query(..., match_source='strings')")
-
-        # Many results in same module
-        if self._has_multiple_results_in_same_module(results):
+        # Contextual suggestion: many results in same module
+        if len(
+            suggestions
+        ) < QueryConfig.MAX_SUGGESTIONS and self._has_multiple_results_in_same_module(results):
             common_module = self._get_most_common_module(results)
             suggestions.append(f"search_module('{common_module}', what_calls_it=True)")
 
-        # Results have recent changes
-        if self._has_recent_changes(results):
-            suggestions.append("query(..., recent=true)")
+        # Contextual suggestion: SQL/database keywords warrant string search
+        query_text = self._normalize_query_text(query)
+        if len(suggestions) < QueryConfig.MAX_SUGGESTIONS and self._is_sql_related_query(
+            query_text
+        ):
+            suggestions.append("query(..., match_source='strings')")
 
-        # Module-level results
-        if self._has_many_module_results(results):
-            suggestions.append("query(..., filter_type='functions')")
+        # Skip generic fillers like "query(..., recent=true)" and "query(..., filter_type='functions')"
 
         return suggestions[: QueryConfig.MAX_SUGGESTIONS]
 
     def _normalize_query_text(self, query: str | list[str | list[str]]) -> str:
         """Convert query to normalized lowercase text."""
-        queries = [query] if isinstance(query, str) else query
-        parts: list[str] = []
-        for q in queries:
+        if isinstance(query, str):
+            return query.lower()
+        # Flatten nested lists (synonym groups)
+        flat_terms: list[str] = []
+        for q in query:
             if isinstance(q, list):
-                parts.append(" ".join(str(k).lower() for k in q))
+                flat_terms.extend(q)
             else:
-                parts.append(str(q).lower())
-        return " ".join(parts)
+                flat_terms.append(q)
+        return " ".join(t.lower() for t in flat_terms)
 
     def _is_sql_related_query(self, query_text: str) -> bool:
         """Check if query contains SQL-related keywords."""
@@ -637,17 +643,7 @@ class QueryOrchestrator:
         lines = []
 
         # Header - compact format
-        if isinstance(query, str):
-            query_display = query
-        else:
-            parts: list[str] = []
-            for q in query:
-                if isinstance(q, list):
-                    quoted = ", ".join(f'"{k}"' for k in q)
-                    parts.append(f"[{quoted}]")
-                else:
-                    parts.append(f'"{q}"')
-            query_display = ", ".join(parts)
+        query_display = query if isinstance(query, str) else ", ".join(f'"{q}"' for q in query)
         total = len(results)
         showing = min(total, max_results)
         lines.append(
@@ -709,21 +705,20 @@ class QueryOrchestrator:
         """
         lines = []
 
-        # Compact header: number, name, and tier on first line
+        # Compact header: number, name, and confidence on first line
         header_parts = [f"{index}. {result.name}"]
 
-        # Add tier label if available
-        if result.tier_label:
-            header_parts.append(f"[{result.tier_label}]")
+        # Add confidence % by default, include tier label in verbose mode
+        if result.percentile is not None:
+            if verbose and result.tier_label:
+                header_parts.append(f"({result.percentile:.0f}%) [{result.tier_label}]")
+            else:
+                header_parts.append(f"({result.percentile:.0f}%)")
 
         lines.append(" | ".join(header_parts) + "\n")
 
         # Path on second line
         lines.append(f"   {result.file}:{result.line}\n")
-
-        # Confidence (only in verbose mode)
-        if verbose and result.percentile is not None:
-            lines.append(f"   Confidence: {result.percentile:.1f}%\n")
 
         # Documentation preview (only in verbose mode)
         if verbose and result.doc:
@@ -732,7 +727,7 @@ class QueryOrchestrator:
                 doc = doc[:100] + "..."
             lines.append(f"   {doc}\n")
 
-        # Last modified timestamp - always show (compact)
+        # Last modified timestamp - compact format
         if result.last_modified_at:
             try:
                 dt = datetime.fromisoformat(result.last_modified_at.replace("Z", "+00:00"))
@@ -742,15 +737,13 @@ class QueryOrchestrator:
                 time_ago = self._get_relative_time_string(delta)
 
                 git_info = []
-                if result.last_modified_sha:
-                    git_info.append(result.last_modified_sha)
                 if result.last_modified_pr:
                     git_info.append(f"#{result.last_modified_pr}")
 
                 if git_info:
-                    lines.append(f"   Modified: {time_ago} ({' '.join(git_info)})\n")
+                    lines.append(f"   {time_ago} old ({' '.join(git_info)})\n")
                 else:
-                    lines.append(f"   Modified: {time_ago}\n")
+                    lines.append(f"   {time_ago} old\n")
             except (ValueError, AttributeError):
                 pass
 
@@ -787,15 +780,15 @@ class QueryOrchestrator:
         """Append compact keyword list to lines."""
         kw_with_sources: list[str] = []
         source_suffixes = {"docs": "(d)", "strings": "(s)", "both": "(d+s)"}
-        for kw in result.matched_keywords[:3]:
+        for kw in result.matched_keywords[: QueryConfig.MAX_KEYWORDS_TO_SHOW]:
             source = result.keyword_sources.get(kw, "")
             suffix = source_suffixes.get(source, "")
-            kw_with_sources.append(f"*{kw}*{suffix}")
+            kw_with_sources.append(f"{kw}{suffix}")
 
         matched_str = ", ".join(kw_with_sources)
-        if len(result.matched_keywords) > 3:
-            matched_str += f" +{len(result.matched_keywords) - 3}"
-        lines.append(f"   Matched: {matched_str}\n")
+        if len(result.matched_keywords) > QueryConfig.MAX_KEYWORDS_TO_SHOW:
+            matched_str += f" +{len(result.matched_keywords) - QueryConfig.MAX_KEYWORDS_TO_SHOW}"
+        lines.append(f"   {matched_str}\n")
 
     def _extract_code_snippet(
         self, file_path: str, line: int, context_lines: int = QueryConfig.DEFAULT_CONTEXT_LINES
@@ -942,18 +935,8 @@ class QueryOrchestrator:
         """
         suggestions = []
 
-        # Convert query to string for analysis
-        if isinstance(query, str):
-            query_str = query
-        else:
-            # Handle mixed list
-            parts: list[str] = []
-            for q in query:
-                if isinstance(q, list):
-                    parts.append(f"[{' '.join(str(k) for k in q)}]")
-                else:
-                    parts.append(str(q))
-            query_str = " ".join(parts)
+        # Convert query to string for analysis (flatten nested lists)
+        query_str = self._normalize_query_text(query)
 
         # 1. Suggest case/formatting variants
         variants = self._generate_query_variants(query_str)
