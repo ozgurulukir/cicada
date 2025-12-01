@@ -75,13 +75,13 @@ uvx cicada-mcp claude   # or cursor, vs
 or
 
 ```
-claude mcp add uvx cicada-mcp
+claude mcp add cicada uvx cicada-mcp
 ```   
 ```
-gemini mcp add uvx cicada-mcp
+gemini mcp add cicada uvx cicada-mcp
 ```  
 ```
-codex mcp add uvx cicada-mcp
+codex mcp add cicada uvx cicada-mcp
 ```  
 
 
