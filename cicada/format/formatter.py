@@ -24,6 +24,8 @@ from cicada.utils.truncation import TruncationHelper
 
 # Display limits for compact output
 MAX_COCHANGE_FILES = 3  # Maximum co-change files to show before truncating
+COMMENT_PREVIEW_LIMIT = 100
+COMMENT_ELLIPSIS = "..."
 
 
 class ModuleFormatter:
@@ -747,6 +749,30 @@ class ModuleFormatter:
         if include_docs and func.get("examples"):
             lines.extend(["", "Examples:", "", func["examples"]])
 
+        # Display comment sources if available
+        comment_sources = result.get("comment_sources", [])
+        if comment_sources:
+            lines.extend(["", "Inline comments:"])
+            for comment_info in comment_sources[:5]:  # Limit to 5
+                comment_text = comment_info["comment"]
+                comment_line = comment_info["line"]
+                is_multiline = "\n" in comment_text
+                display_text = comment_text.split("\n")[0] if is_multiline else comment_text
+
+                was_truncated = len(display_text) > COMMENT_PREVIEW_LIMIT
+                if was_truncated:
+                    display_text = (
+                        display_text[: COMMENT_PREVIEW_LIMIT - len(COMMENT_ELLIPSIS)]
+                        + COMMENT_ELLIPSIS
+                    )
+                elif is_multiline:
+                    # Indicate multi-line without implying truncation
+                    display_text = display_text + " [+lines]"
+
+                lines.append(f'   • "# {display_text}" (:{comment_line})')
+            if len(comment_sources) > 5:
+                lines.append(f"   ... and {len(comment_sources) - 5} more comments")
+
         if func.get("guards"):
             guards_str = ", ".join(func["guards"])
             if single_result:
@@ -1340,8 +1366,14 @@ class ModuleFormatter:
                         kw_with_sources.append(kw + " (in docs)")
                     elif source == "strings":
                         kw_with_sources.append(kw + " (in strings)")
+                    elif source == "comments":
+                        kw_with_sources.append(kw + " (in comments)")
                     elif source == "both":
+                        # Backward compatibility for old "both" format
                         kw_with_sources.append(kw + " (in docs+strings)")
+                    elif source and "+" in source:
+                        # New combined format: docs+strings+comments
+                        kw_with_sources.append(kw + f" (in {source})")
                     else:
                         kw_with_sources.append(kw)
                 lines.append("Matched keywords: " + ", ".join(kw_with_sources))
