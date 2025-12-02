@@ -412,3 +412,10 @@ class TestRustLanguageRegistration:
         assert config.language == "rust"
         assert ".rs" in config.file_extensions
         assert "target" in config.excluded_dirs
+
+    def test_detect_rust_project_language(self, tmp_path):
+        """Should detect Rust project from Cargo.toml."""
+        from cicada.setup import detect_project_language
+
+        (tmp_path / "Cargo.toml").write_text('[package]\nname = "test"')
+        assert detect_project_language(tmp_path) == "rust"
