@@ -17,6 +17,9 @@ from cicada.watcher import SourceFileEventHandler, FileWatcher
 pytestmark = pytest.mark.xdist_group(name="file_watcher_tests")
 
 
+
+
+
 @pytest.fixture
 def mock_watcher():
     """Create a mock watcher for event handler testing"""

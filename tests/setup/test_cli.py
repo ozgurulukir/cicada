@@ -23,6 +23,9 @@ from cicada.commands import (
 from cicada.cli import main
 
 
+
+
+
 def make_index_args(**overrides):
     """Build a MagicMock with sensible defaults for index command args."""
     defaults = {
