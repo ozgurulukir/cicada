@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+**Rust Language Support**
+- Full Rust code indexing via SCIP (Source Code Intelligence Protocol)
+- Complete Rust code analysis: modules, structs, traits, impl blocks, functions, call sites
+- Rust-specific formatting with arity notation (`Calculator.add/1`)
+- Proper handling of impl blocks to associate methods with their parent types
+- Rust signature extractor for function-level co-change analysis
+- Automatically skips private (`_prefix`) and test (`test_prefix`) functions in co-change
+- Calculates function arity excluding `self`/`&self`/`&mut self` parameters
+- Tested on sample Rust projects with structs, traits, and impls
+
+**JavaScript Language Support**
+- Full JavaScript code indexing via SCIP (shares TypeScript infrastructure)
+- Automatic language detection via `package.json` without `tsconfig.json`
+- JavaScript-specific formatter for consistent output
+
+**Centralized Language Registry**
+- All language definitions consolidated in `LanguageRegistry` class
+- Single source of truth for indexers, formatters, and configurations
+- Added `formatter_class` parameter to language registration
+- Added `get_formatter()` method with caching for formatter instances
+- Prevents incomplete language support (no more "unsupported language" errors for indexed code)
+
+**Query Context Lines**
+- New `-A`, `-B`, `-C` flags for `query` command to show context around matches
+- `-A 3` shows 3 lines after each match
+- `-B 3` shows 3 lines before each match
+- `-C 3` shows 3 lines before and after (symmetric context)
+- Auto-enables snippet display when context flags are used
+
+**Generic File Indexing**
+- Support for indexing generic files beyond language-specific ones
+
+**Grepifying Cicada (#215)**
+- Enhanced grep-like functionality across search tools
+
+### Fixed
+
+**Rust SCIP Symbol Handling**
+- Fixed `_get_parent_symbol()` to properly handle Rust impl block symbols
+- Impl methods like `impl#[Calculator]new().` now correctly associate with `Calculator#`
+- Fixed `_extract_name()` to extract just the method name from impl symbols
+- Methods no longer show as `[Calculator]new` - now correctly show as `new`
+
+**Code Block Markdown Formatting**
+- Removed language identifiers from code block markdown for cleaner output
+- Code blocks now use plain ` ``` ` without language tags
+
+**Python Keyword Extraction Progress**
+- Fixed confusing output during Python keyword extraction phase
+
+**String Keyword Extraction**
+- Enabled string keyword extraction by default
+- Fixed related terms suggestions
+
 ## [0.5.2] - 2025-11-30
 
 ### Fixed
