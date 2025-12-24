@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+**TypeScript Language Support (#138, #156, #181)**
+- Full TypeScript code indexing via SCIP (Source Code Intelligence Protocol)
+- TypeScript-specific formatter with `()` notation (e.g., `Container.add()`)
+- Type-aware module display: interfaces show method counts, type aliases skip function sections
+- GenericSCIPIndexer base class extracting 500+ lines of shared SCIP logic
+- Language-specific symbol type detection for TypeScript's SCIP conventions
+- Scope filters (`public`/`private`) now work correctly for TypeScript
+- 54+ query orchestrator tests and 25+ formatter tests for TypeScript
+
 **Rust Language Support**
 - Full Rust code indexing via SCIP (Source Code Intelligence Protocol)
 - Complete Rust code analysis: modules, structs, traits, impl blocks, functions, call sites
@@ -24,6 +33,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic language detection via `package.json` without `tsconfig.json`
 - JavaScript-specific formatter for consistent output
 
+**Inline Comment Indexing for Elixir (#207)**
+- CommentExtractor indexes inline comments (`# ...`) from Elixir source code
+- Comments associated with their containing or following function
+- Enabled by default with keyword extraction (no additional flags needed)
+- 1.2x keyword boost for comment content (between docs and strings)
+- Consecutive comment lines automatically merged into blocks
+- New `match_source="comments"` filter in search queries
+- Comment keywords included in co-occurrence analysis
+
+**Nested Synonym Lists in Query Tool (#162)**
+- Query tool now accepts nested lists of strings for synonym groups
+- Example: `["user", ["auth", "login"]]` treats `auth` and `login` as synonyms
+- Synonym group matches sum their scores but share a single confidence group
+- Supports wildcards within synonym groups
+- Unified OR-pattern handling with group processing logic
+
 **Centralized Language Registry**
 - All language definitions consolidated in `LanguageRegistry` class
 - Single source of truth for indexers, formatters, and configurations
@@ -38,11 +63,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `-C 3` shows 3 lines before and after (symmetric context)
 - Auto-enables snippet display when context flags are used
 
-**Generic File Indexing**
+**Generic File Indexing (#214)**
 - Support for indexing generic files beyond language-specific ones
 
 **Grepifying Cicada (#215)**
 - Enhanced grep-like functionality across search tools
+
+**CLI Improvements**
+- `make pr-comments` now accepts optional PR number argument
 
 ### Fixed
 
@@ -52,9 +80,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `_extract_name()` to extract just the method name from impl symbols
 - Methods no longer show as `[Calculator]new` - now correctly show as `new`
 
+**TypeScript SCIP Fixes**
+- Strip backticks from TypeScript reverse-call keys (SCIP symbols wrap file paths in backticks)
+- Fixed reverse index caller data to include start_line/end_line
+
 **Code Block Markdown Formatting**
 - Removed language identifiers from code block markdown for cleaner output
 - Code blocks now use plain ` ``` ` without language tags
+
+**Enrichment Pipeline Timing**
+- Fixed timing bug where `_start_timing()` was never called, causing elapsed time to show ~56 years
 
 **Python Keyword Extraction Progress**
 - Fixed confusing output during Python keyword extraction phase
@@ -62,6 +97,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **String Keyword Extraction**
 - Enabled string keyword extraction by default
 - Fixed related terms suggestions
+
+### Dependencies
+
+- Added `pathspec` dependency for glob pattern matching
 
 ## [0.5.2] - 2025-11-30
 
