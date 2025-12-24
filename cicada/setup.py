@@ -56,6 +56,10 @@ def detect_project_language(repo_path: Path) -> str:
     if (repo_path / "mix.exs").exists():
         return "elixir"
 
+    # Check for Rust marker
+    if (repo_path / "Cargo.toml").exists():
+        return "rust"
+
     # Check for Erlang markers
     erlang_markers = ["rebar.config", "rebar.lock", "erlang.mk"]
     for marker in erlang_markers:
@@ -80,7 +84,8 @@ def detect_project_language(repo_path: Path) -> str:
     raise ValueError(
         f"Could not detect project language in {repo_path}\n"
         "Expected Python markers (pyproject.toml, setup.py, etc.), "
-        "Elixir marker (mix.exs), Erlang markers (rebar.config, src/*.erl), "
+        "Elixir marker (mix.exs), Rust marker (Cargo.toml), "
+        "Erlang markers (rebar.config, src/*.erl), "
         "or TypeScript/JavaScript markers"
     )
 

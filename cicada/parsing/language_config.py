@@ -119,6 +119,26 @@ class LanguageConfig:
         )
 
     @staticmethod
+    def default_rust() -> "LanguageConfig":
+        """Create default Rust configuration."""
+        return LanguageConfig(
+            language="rust",
+            file_extensions=[".rs"],
+            excluded_dirs=[
+                "target",
+                ".git",
+                "vendor",
+                "node_modules",
+            ],
+            tree_sitter_grammar="tree-sitter-rust",
+            comment_syntax={
+                "line": "//",
+                "block_start": "/*",
+                "block_end": "*/",
+            },
+        )
+
+    @staticmethod
     def default_erlang() -> "LanguageConfig":
         """Create default Erlang configuration."""
         return LanguageConfig(

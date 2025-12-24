@@ -203,6 +203,14 @@ LanguageRegistry.register_language(
     config=LanguageConfig.default_typescript(),
 )
 
+# Register Rust (SCIP-based)
+LanguageRegistry.register_language(
+    language="rust",
+    parser_class=None,  # No parser needed for SCIP-based indexing
+    indexer_class="cicada.languages.rust.indexer.RustSCIPIndexer",
+    config=LanguageConfig.default_rust(),
+)
+
 # Register Erlang (tree-sitter based)
 LanguageRegistry.register_language(
     language="erlang",
