@@ -166,3 +166,223 @@ class LanguageConfig:
             tree_sitter_grammar="tree-sitter-erlang",
             comment_syntax={"line": "%"},
         )
+
+    @staticmethod
+    def default_go() -> "LanguageConfig":
+        """Create default Go configuration."""
+        return LanguageConfig(
+            language="go",
+            file_extensions=[".go"],
+            excluded_dirs=[
+                "vendor",
+                ".git",
+                "node_modules",
+                "testdata",
+            ],
+            comment_syntax={
+                "line": "//",
+                "block_start": "/*",
+                "block_end": "*/",
+            },
+        )
+
+    @staticmethod
+    def default_java() -> "LanguageConfig":
+        """Create default Java configuration."""
+        return LanguageConfig(
+            language="java",
+            file_extensions=[".java"],
+            excluded_dirs=[
+                "build",
+                "target",
+                ".gradle",
+                ".git",
+                "node_modules",
+                "out",
+                "bin",
+            ],
+            comment_syntax={
+                "line": "//",
+                "block_start": "/*",
+                "block_end": "*/",
+            },
+        )
+
+    @staticmethod
+    def default_kotlin() -> "LanguageConfig":
+        """Create default Kotlin configuration."""
+        return LanguageConfig(
+            language="kotlin",
+            file_extensions=[".kt", ".kts"],
+            excluded_dirs=[
+                "build",
+                "target",
+                ".gradle",
+                ".git",
+                "node_modules",
+                "out",
+            ],
+            comment_syntax={
+                "line": "//",
+                "block_start": "/*",
+                "block_end": "*/",
+            },
+        )
+
+    @staticmethod
+    def default_scala() -> "LanguageConfig":
+        """Create default Scala configuration."""
+        return LanguageConfig(
+            language="scala",
+            file_extensions=[".scala", ".sc"],
+            excluded_dirs=[
+                "target",
+                ".bloop",
+                ".metals",
+                ".git",
+                "node_modules",
+                "project/target",
+            ],
+            comment_syntax={
+                "line": "//",
+                "block_start": "/*",
+                "block_end": "*/",
+            },
+        )
+
+    @staticmethod
+    def default_c() -> "LanguageConfig":
+        """Create default C configuration."""
+        return LanguageConfig(
+            language="c",
+            file_extensions=[".c", ".h"],
+            excluded_dirs=[
+                "build",
+                ".git",
+                "node_modules",
+                "vendor",
+                "third_party",
+            ],
+            comment_syntax={
+                "line": "//",
+                "block_start": "/*",
+                "block_end": "*/",
+            },
+        )
+
+    @staticmethod
+    def default_cpp() -> "LanguageConfig":
+        """Create default C++ configuration."""
+        return LanguageConfig(
+            language="cpp",
+            file_extensions=[".cpp", ".cc", ".cxx", ".hpp", ".hxx", ".h"],
+            excluded_dirs=[
+                "build",
+                ".git",
+                "node_modules",
+                "vendor",
+                "third_party",
+                "cmake-build-debug",
+                "cmake-build-release",
+            ],
+            comment_syntax={
+                "line": "//",
+                "block_start": "/*",
+                "block_end": "*/",
+            },
+        )
+
+    @staticmethod
+    def default_ruby() -> "LanguageConfig":
+        """Create default Ruby configuration."""
+        return LanguageConfig(
+            language="ruby",
+            file_extensions=[".rb", ".rake"],
+            excluded_dirs=[
+                "vendor",
+                ".git",
+                "node_modules",
+                "tmp",
+                "log",
+                ".bundle",
+            ],
+            comment_syntax={"line": "#"},
+        )
+
+    @staticmethod
+    def default_csharp() -> "LanguageConfig":
+        """Create default C# configuration."""
+        return LanguageConfig(
+            language="csharp",
+            file_extensions=[".cs"],
+            excluded_dirs=[
+                "bin",
+                "obj",
+                ".git",
+                "node_modules",
+                "packages",
+                ".vs",
+            ],
+            comment_syntax={
+                "line": "//",
+                "block_start": "/*",
+                "block_end": "*/",
+            },
+        )
+
+    @staticmethod
+    def default_vb() -> "LanguageConfig":
+        """Create default Visual Basic configuration."""
+        return LanguageConfig(
+            language="vb",
+            file_extensions=[".vb"],
+            excluded_dirs=[
+                "bin",
+                "obj",
+                ".git",
+                "node_modules",
+                "packages",
+                ".vs",
+            ],
+            comment_syntax={"line": "'"},
+        )
+
+    @staticmethod
+    def default_dart() -> "LanguageConfig":
+        """Create default Dart configuration."""
+        return LanguageConfig(
+            language="dart",
+            file_extensions=[".dart"],
+            excluded_dirs=[
+                "build",
+                ".dart_tool",
+                ".git",
+                "node_modules",
+                ".pub-cache",
+            ],
+            comment_syntax={
+                "line": "//",
+                "block_start": "/*",
+                "block_end": "*/",
+            },
+        )
+
+    @staticmethod
+    def default_php() -> "LanguageConfig":
+        """Create default PHP configuration."""
+        return LanguageConfig(
+            language="php",
+            file_extensions=[".php"],
+            excluded_dirs=[
+                "vendor",
+                ".git",
+                "node_modules",
+                "cache",
+                "storage",
+            ],
+            comment_syntax={
+                "line": "//",
+                "block_start": "/*",
+                "block_end": "*/",
+            },
+        )

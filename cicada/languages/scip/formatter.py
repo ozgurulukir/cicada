@@ -88,3 +88,47 @@ class JavaScriptFormatter(SCIPFormatter):
 
 class RustFormatter(SCIPFormatter):
     """Formatter for Rust language conventions."""
+
+
+class GoFormatter(SCIPFormatter):
+    """Formatter for Go language conventions."""
+
+
+class JavaFormatter(SCIPFormatter):
+    """Formatter for Java language conventions."""
+
+
+class KotlinFormatter(SCIPFormatter):
+    """Formatter for Kotlin language conventions."""
+
+
+class ScalaFormatter(SCIPFormatter):
+    """Formatter for Scala language conventions."""
+
+
+class CFormatter(SCIPFormatter):
+    """Formatter for C language conventions."""
+
+
+class CppFormatter(SCIPFormatter):
+    """Formatter for C++ language conventions."""
+
+
+class RubyFormatter(SCIPFormatter):
+    """Formatter for Ruby language conventions."""
+
+
+class CSharpFormatter(SCIPFormatter):
+    """Formatter for C# language conventions."""
+
+
+class VBFormatter(SCIPFormatter):
+    """Formatter for Visual Basic language conventions."""
+
+
+class DartFormatter(SCIPFormatter):
+    """Formatter for Dart language conventions."""
+
+
+class PhpFormatter(SCIPFormatter):
+    """Formatter for PHP language conventions."""
