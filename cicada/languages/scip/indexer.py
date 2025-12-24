@@ -477,8 +477,18 @@ class GenericSCIPIndexer(BaseIndexer, ABC):
                 timeout=timeout,
             )
 
+            # Some indexers (e.g., scip-ruby) may return non-zero exit codes
+            # due to warnings but still produce valid output
             if result.returncode != 0:
-                raise RuntimeError(f"SCIP indexing failed:\n{result.stderr}")
+                # Check if output was still generated despite the error
+                if output_path.exists() and output_path.stat().st_size > 0:
+                    # Output exists, just log the warning
+                    if self.verbose:
+                        print(f"  Warning: Indexer returned non-zero exit code but produced output")
+                        if result.stderr:
+                            print(f"  Stderr: {result.stderr.strip()[:200]}")
+                else:
+                    raise RuntimeError(f"SCIP indexing failed:\n{result.stderr}")
 
             if not output_path.exists():
                 raise RuntimeError(f"SCIP indexer did not generate {output_path}")

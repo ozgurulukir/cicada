@@ -38,7 +38,9 @@ class RubySCIPIndexer(GenericSCIPIndexer):
 
     def _run_scip_indexer(self, repo_path: Path) -> Path:
         """Run scip-ruby indexer."""
-        cmd = ["scip-ruby", "index", "--output", "index.scip"]
+        # scip-ruby uses --index-file instead of --output
+        # The . at the end specifies the directory to index
+        cmd = ["scip-ruby", "--index-file", "index.scip", "."]
         scip_file = repo_path / "index.scip"
 
         return self._run_scip_command(

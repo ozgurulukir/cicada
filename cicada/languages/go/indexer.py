@@ -36,7 +36,8 @@ class GoSCIPIndexer(GenericSCIPIndexer):
 
     def _run_scip_indexer(self, repo_path: Path) -> Path:
         """Run scip-go indexer."""
-        cmd = ["scip-go", "index", "--output", "index.scip"]
+        # Note: ./... is required to tell scip-go to index all packages
+        cmd = ["scip-go", "index", "--output", "index.scip", "./..."]
         scip_file = repo_path / "index.scip"
 
         return self._run_scip_command(
