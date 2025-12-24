@@ -406,8 +406,16 @@ class ToolRouter:
             return [TextContent(type="text", text="'query' is required")]
         if not isinstance(query, (str, list)):
             return [TextContent(type="text", text="'query' must be a string or list of strings")]
-        if isinstance(query, list) and not all(isinstance(q, str) for q in query):
-            return [TextContent(type="text", text="'query' list must contain only strings")]
+        if isinstance(query, list) and not all(
+            isinstance(q, str) or (isinstance(q, list) and all(isinstance(s, str) for s in q))
+            for q in query
+        ):
+            return [
+                TextContent(
+                    type="text",
+                    text="'query' list must contain strings or lists of strings (for synonyms)",
+                )
+            ]
         if scope not in ("all", "public", "private"):
             return [
                 TextContent(type="text", text="'scope' must be one of: 'all', 'public', 'private'")

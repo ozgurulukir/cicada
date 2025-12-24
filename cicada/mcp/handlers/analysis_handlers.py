@@ -67,7 +67,7 @@ class AnalysisHandler:
 
     async def search_by_keywords(
         self,
-        keywords: list[str],
+        keywords: list[str | list[str]],
         filter_type: str = "all",
         min_score: float = 0.0,
         match_source: str = "all",
@@ -107,15 +107,27 @@ class AnalysisHandler:
             results = filter_by_score_threshold(results, min_score)
 
         if not results:
+            # Format keywords for display (handling mixed lists)
+            kw_display_parts: list[str] = []
+            for k in keywords:
+                if isinstance(k, list):
+                    kw_display_parts.append(f"[{'|'.join(str(sub) for sub in k)}]")
+                else:
+                    kw_display_parts.append(str(k))
+            kw_display = ", ".join(kw_display_parts)
+
             if min_score > 0.0:
-                result = f"No results found for keywords: {', '.join(keywords)} with min_score >= {min_score}"
+                result = (
+                    f"No results found for keywords: {kw_display} with min_score >= {min_score}"
+                )
             else:
-                result = f"No results found for keywords: {', '.join(keywords)}"
+                result = f"No results found for keywords: {kw_display}"
             return [TextContent(type="text", text=result)]
 
         # Format results
+        language = self.index.get("metadata", {}).get("language", "elixir")
         formatted_result = ModuleFormatter.format_keyword_search_results_markdown(
-            results, show_scores=True
+            results, show_scores=True, language=language
         )
 
         return [TextContent(type="text", text=formatted_result)]
@@ -246,7 +258,7 @@ class AnalysisHandler:
 
     async def query(
         self,
-        query: str | list[str],
+        query: str | list[str | list[str]],
         scope: str = "all",
         recent: bool = False,
         result_type: str = "all",

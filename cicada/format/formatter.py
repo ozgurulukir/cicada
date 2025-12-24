@@ -77,18 +77,42 @@ class ModuleFormatter:
         return CallSiteFormatter.group_by_caller(call_sites)
 
     @staticmethod
-    def _format_caller_name(site: dict[str, Any]) -> str:
+    def _format_func_ref(module: str, func: str, arity: int, language: str = "elixir") -> str:
+        """Format function reference using language-appropriate notation.
+
+        Args:
+            module: Module name
+            func: Function name
+            arity: Function arity
+            language: Programming language for notation style
+
+        Returns:
+            Formatted string (e.g., "Module.func/2" for Elixir, "Module.func()" for TypeScript)
+        """
+        from cicada.languages.formatter_registry import get_language_formatter
+
+        formatter = get_language_formatter(language)
+        return formatter.format_function_identifier(module, func, arity)
+
+    @staticmethod
+    def _format_caller_name(site: dict[str, Any], language: str = "elixir") -> str:
         """Format caller name from a call site.
 
         Args:
             site: Call site dictionary with 'calling_module' and optionally 'calling_function'
+            language: Programming language for formatting
 
         Returns:
-            Formatted caller string (e.g., "Module.func/2" or "Module")
+            Formatted caller string (e.g., "Module.func/2" or "Module.func()")
         """
         calling_func = site.get("calling_function")
         if calling_func:
-            return f"{site['calling_module']}.{calling_func['name']}/{calling_func['arity']}"
+            return ModuleFormatter._format_func_ref(
+                site["calling_module"],
+                calling_func["name"],
+                calling_func["arity"],
+                language,
+            )
         return site["calling_module"]
 
     @staticmethod
@@ -222,11 +246,41 @@ class ModuleFormatter:
         public_count = len(public_grouped)
         private_count = len(private_grouped)
 
+        # Check module_kind for type-aware formatting
+        module_kind = data.get("module_kind", "module")
+
         # Build the markdown output - compact format
-        lines = [
-            f"{data['file']}:{data['line']}",
-            f"{module_name} • {public_count} public • {private_count} private",
-        ]
+        lines = [f"{data['file']}:{data['line']}"]
+
+        # Type-aware header based on module_kind
+        if module_kind == "type_alias":
+            # Type aliases don't have functions - show as type
+            lines.append(f"{module_name} (type alias)")
+        elif module_kind == "interface":
+            # Interfaces have methods, not functions
+            method_count = public_count + private_count
+            if method_count > 0:
+                lines.append(f"{module_name} (interface) • {method_count} method(s)")
+            else:
+                lines.append(f"{module_name} (interface)")
+        elif module_kind == "struct":
+            # Structs may have fields/methods
+            lines.append(
+                f"{module_name} (struct) • {public_count} public • {private_count} private"
+            )
+        elif module_kind == "enum":
+            # Enums have variants
+            lines.append(f"{module_name} (enum) • {public_count} public • {private_count} private")
+        elif module_kind == "trait":
+            # Traits have methods
+            method_count = public_count + private_count
+            if method_count > 0:
+                lines.append(f"{module_name} (trait) • {method_count} method(s)")
+            else:
+                lines.append(f"{module_name} (trait)")
+        else:
+            # Default: class or module - standard format
+            lines.append(f"{module_name} • {public_count} public • {private_count} private")
 
         # Add staleness warning if applicable
         if staleness_info and staleness_info.get("is_stale"):
@@ -501,6 +555,7 @@ class ModuleFormatter:
         *,
         prepend_blank: bool = False,
         include_examples: bool = False,
+        language: str = "elixir",
     ) -> list[str]:
         if not sites:
             return []
@@ -516,7 +571,9 @@ class ModuleFormatter:
 
         lines.append(f"{indent}{label} ({site_count}):")
         lines.extend(
-            ModuleFormatter._format_grouped_sites(truncated_sites, indent, include_examples)
+            ModuleFormatter._format_grouped_sites(
+                truncated_sites, indent, include_examples, language
+            )
         )
 
         if truncation_msg:
@@ -526,7 +583,11 @@ class ModuleFormatter:
 
     @staticmethod
     def _format_remaining_sites(
-        label: str, sites: list[dict[str, Any]], indent: str, prepend_blank: bool = False
+        label: str,
+        sites: list[dict[str, Any]],
+        indent: str,
+        prepend_blank: bool = False,
+        language: str = "elixir",
     ) -> list[str]:
         if not sites:
             return []
@@ -539,16 +600,18 @@ class ModuleFormatter:
         remaining_count = sum(len(site["lines"]) for site in grouped_sites)
         lines.append(f"{indent}{label} ({remaining_count}):")
         for site in grouped_sites:
-            caller = ModuleFormatter._format_caller_name(site)
+            caller = ModuleFormatter._format_caller_name(site, language)
             line_list = ", ".join(f":{line}" for line in site["lines"])
             lines.append(f"{indent}- {caller} at {site['file']}{line_list}")
         return lines
 
     @staticmethod
-    def _format_grouped_sites(grouped_sites, indent, include_examples: bool) -> list[str]:
+    def _format_grouped_sites(
+        grouped_sites, indent, include_examples: bool, language: str = "elixir"
+    ) -> list[str]:
         lines: list[str] = []
         for site in grouped_sites:
-            caller = ModuleFormatter._format_caller_name(site)
+            caller = ModuleFormatter._format_caller_name(site, language)
 
             # Show consolidated line numbers only if multiple lines (with automatic truncation)
             if len(site["lines"]) > 1:
@@ -570,7 +633,9 @@ class ModuleFormatter:
         return lines
 
     @staticmethod
-    def _format_remaining_call_sites(call_sites, call_sites_with_examples, indent):
+    def _format_remaining_call_sites(
+        call_sites, call_sites_with_examples, indent, language: str = "elixir"
+    ):
         lines = []
         # Create a set of call sites that were shown with examples
         shown_call_lines = set()
@@ -592,19 +657,25 @@ class ModuleFormatter:
 
             if remaining_code:
                 lines.extend(
-                    ModuleFormatter._format_remaining_sites("Code", remaining_code, indent)
+                    ModuleFormatter._format_remaining_sites(
+                        "Code", remaining_code, indent, language=language
+                    )
                 )
 
             if remaining_test:
                 lines.extend(
                     ModuleFormatter._format_remaining_sites(
-                        "Test", remaining_test, indent, prepend_blank=bool(remaining_code)
+                        "Test",
+                        remaining_test,
+                        indent,
+                        prepend_blank=bool(remaining_code),
+                        language=language,
                     )
                 )
         return lines
 
     @staticmethod
-    def _format_call_sites_without_examples(call_sites, indent):
+    def _format_call_sites_without_examples(call_sites, indent, language: str = "elixir"):
         lines = []
         code_sites, test_sites = ModuleFormatter._split_call_sites(call_sites)
 
@@ -616,7 +687,7 @@ class ModuleFormatter:
         if code_sites:
             lines.extend(
                 ModuleFormatter._format_call_site_section(
-                    "Code", code_sites, indent, include_examples=False
+                    "Code", code_sites, indent, include_examples=False, language=language
                 )
             )
 
@@ -628,13 +699,16 @@ class ModuleFormatter:
                     indent,
                     prepend_blank=bool(code_sites),
                     include_examples=False,
+                    language=language,
                 )
             )
         lines.append("")
         return lines
 
     @staticmethod
-    def _format_call_sites_with_examples(call_sites, call_sites_with_examples, indent):
+    def _format_call_sites_with_examples(
+        call_sites, call_sites_with_examples, indent, language: str = "elixir"
+    ):
         lines = []
         code_sites_with_examples, test_sites_with_examples = ModuleFormatter._split_call_sites(
             call_sites_with_examples
@@ -649,6 +723,7 @@ class ModuleFormatter:
                     code_sites_with_examples,
                     indent,
                     include_examples=True,
+                    language=language,
                 )
             )
 
@@ -660,18 +735,19 @@ class ModuleFormatter:
                     indent,
                     prepend_blank=bool(code_sites_with_examples),
                     include_examples=True,
+                    language=language,
                 )
             )
 
         lines.extend(
             ModuleFormatter._format_remaining_call_sites(
-                call_sites, call_sites_with_examples, indent
+                call_sites, call_sites_with_examples, indent, language
             )
         )
         return lines
 
     @staticmethod
-    def _format_call_sites(call_sites, call_sites_with_examples, indent):
+    def _format_call_sites(call_sites, call_sites_with_examples, indent, language: str = "elixir"):
         lines = []
         # Check if we have usage examples (code lines)
         has_examples = len(call_sites_with_examples) > 0
@@ -679,11 +755,13 @@ class ModuleFormatter:
         if has_examples:
             lines.extend(
                 ModuleFormatter._format_call_sites_with_examples(
-                    call_sites, call_sites_with_examples, indent
+                    call_sites, call_sites_with_examples, indent, language
                 )
             )
         else:
-            lines.extend(ModuleFormatter._format_call_sites_without_examples(call_sites, indent))
+            lines.extend(
+                ModuleFormatter._format_call_sites_without_examples(call_sites, indent, language)
+            )
         return lines
 
     @staticmethod
@@ -798,18 +876,24 @@ class ModuleFormatter:
                     for dep in internal[:5]:
                         dep_module = dep.get("module", "?")
                         dep_func = dep.get("function", "?")
-                        dep_arity = dep.get("arity", "?")
+                        dep_arity = dep.get("arity", 0)
                         dep_line = dep.get("line", "?")
-                        lines.append(f"   • {dep_module}.{dep_func}/{dep_arity} :{dep_line}")
+                        func_ref = ModuleFormatter._format_func_ref(
+                            dep_module, dep_func, dep_arity, language
+                        )
+                        lines.append(f"   • {func_ref} :{dep_line}")
 
                     # Show external dependencies
                     remaining = 5 - len(internal[:5])
                     for dep in external[:remaining]:
                         dep_module = dep.get("module", "?")
                         dep_func = dep.get("function", "?")
-                        dep_arity = dep.get("arity", "?")
+                        dep_arity = dep.get("arity", 0)
                         dep_line = dep.get("line", "?")
-                        lines.append(f"   • {dep_module}.{dep_func}/{dep_arity} :{dep_line}")
+                        func_ref = ModuleFormatter._format_func_ref(
+                            dep_module, dep_func, dep_arity, language
+                        )
+                        lines.append(f"   • {func_ref} :{dep_line}")
 
                     shown = min(5, len(internal) + len(external))
                     if total > shown:
@@ -823,15 +907,20 @@ class ModuleFormatter:
                     for dep in dependencies[:5]:
                         dep_module = dep.get("module", "?")
                         dep_func = dep.get("function", "?")
-                        dep_arity = dep.get("arity", "?")
+                        dep_arity = dep.get("arity", 0)
                         dep_line = dep.get("line", "?")
-                        lines.append(f"   • {dep_module}.{dep_func}/{dep_arity} :{dep_line}")
+                        func_ref = ModuleFormatter._format_func_ref(
+                            dep_module, dep_func, dep_arity, language
+                        )
+                        lines.append(f"   • {func_ref} :{dep_line}")
                     if len(dependencies) > 5:
                         lines.append(f"   ... and {len(dependencies) - 5} more")
 
         if call_sites:
             lines.extend(
-                ModuleFormatter._format_call_sites(call_sites, call_sites_with_examples, "")
+                ModuleFormatter._format_call_sites(
+                    call_sites, call_sites_with_examples, "", language
+                )
             )
         else:
             lines.append("*No call sites found*")
@@ -984,13 +1073,18 @@ class ModuleFormatter:
         return "\n".join(lines)
 
     @staticmethod
-    def format_function_results_json(function_name: str, results: list[dict[str, Any]]) -> str:
+    def format_function_results_json(
+        function_name: str,
+        results: list[dict[str, Any]],
+        language: str = "elixir",
+    ) -> str:
         """
         Format function search results as JSON.
 
         Args:
             function_name: The searched function name
             results: List of function matches with module context
+            language: Programming language for formatting
 
         Returns:
             Formatted JSON string
@@ -1005,12 +1099,18 @@ class ModuleFormatter:
 
         formatted_results = []
         for result in results:
+            full_name = ModuleFormatter._format_func_ref(
+                result["module"],
+                result["function"]["name"],
+                result["function"]["arity"],
+                language,
+            )
             func_entry = {
                 "module": result["module"],
                 "moduledoc": result.get("moduledoc"),
                 "function": result["function"]["name"],
                 "arity": result["function"]["arity"],
-                "full_name": f"{result['module']}.{result['function']['name']}/{result['function']['arity']}",
+                "full_name": full_name,
                 "signature": SignatureBuilder.build(result["function"]),
                 "location": f"{result['file']}:{result['function']['line']}",
                 "type": result["function"]["type"],
@@ -1040,13 +1140,16 @@ class ModuleFormatter:
         return json.dumps(output, indent=2)
 
     @staticmethod
-    def format_module_usage_markdown(module_name: str, usage_results: dict[str, Any]) -> str:
+    def format_module_usage_markdown(
+        module_name: str, usage_results: dict[str, Any], language: str = "elixir"
+    ) -> str:
         """
         Format module usage results as Markdown.
 
         Args:
             module_name: The module being searched for
             usage_results: Dictionary with usage category keys
+            language: Programming language for formatting (default: elixir)
 
         Returns:
             Formatted Markdown string
@@ -1156,17 +1259,29 @@ class ModuleFormatter:
             )
 
             # Display each called function
-            for func_key, func_data in sorted(called_functions.items()):
+            for _func_key, func_data in sorted(called_functions.items()):
                 num_functions = len(func_data["calling_functions"])
+                # Format using language-appropriate notation (not hardcoded /arity)
+                display_name = ModuleFormatter._format_func_ref(
+                    module_name,
+                    func_data["name"],
+                    func_data["arity"],
+                    language,
+                )
                 lines.append(
-                    f"- {func_key} — {func_data['total_calls']} calls in {num_functions} function(s)"
+                    f"- {display_name} — {func_data['total_calls']} calls in {num_functions} function(s)"
                 )
 
                 # Display calling functions
                 for caller in func_data["calling_functions"]:
                     if caller["function"]:
-                        # Regular function call
-                        func_sig = f"{caller['function']}/{caller['arity']}"
+                        # Regular function call - use language-appropriate notation
+                        func_sig = ModuleFormatter._format_func_ref(
+                            caller["module"],
+                            caller["function"],
+                            caller["arity"],
+                            language,
+                        )
                         line_range = f":{caller['start_line']}-{caller['end_line']}"
                         call_info = f"{caller['call_count']} calls"
 
@@ -1259,12 +1374,13 @@ class ModuleFormatter:
         return lines
 
     @staticmethod
-    def _format_cochange_info(cochange_info: dict[str, Any]) -> list[str]:
+    def _format_cochange_info(cochange_info: dict[str, Any], language: str = "elixir") -> list[str]:
         """
         Format co-change information for display.
 
         Args:
             cochange_info: Dictionary with 'related_files' and/or 'related_functions' keys
+            language: Programming language for formatting (default: elixir)
 
         Returns:
             List of formatted lines
@@ -1296,8 +1412,10 @@ class ModuleFormatter:
             def format_function(f: dict[str, Any]) -> tuple[str, int]:
                 module = f.get("module", "?")
                 function = f.get("function", "?")
-                arity = f.get("arity", "?")
-                return f"{module}.{function}/{arity}", f.get("count", 0)
+                arity = f.get("arity", 0)
+                # Use language-appropriate notation (not hardcoded /arity)
+                display_name = ModuleFormatter._format_func_ref(module, function, arity, language)
+                return display_name, f.get("count", 0)
 
             lines.extend(
                 ModuleFormatter._format_related_items(
@@ -1309,7 +1427,9 @@ class ModuleFormatter:
 
     @staticmethod
     def format_keyword_search_results_markdown(
-        results: list[dict[str, Any]], show_scores: bool = True
+        results: list[dict[str, Any]],
+        show_scores: bool = True,
+        language: str = "elixir",
     ) -> str:
         """
         Format keyword search results as Markdown.
@@ -1317,6 +1437,7 @@ class ModuleFormatter:
         Args:
             results: List of search result dictionaries
             show_scores: Whether to show relevance scores. Defaults to True.
+            language: Programming language for formatting (default: elixir)
 
         Returns:
             Formatted Markdown string
@@ -1342,7 +1463,7 @@ class ModuleFormatter:
             # Show co-change information if available
             cochange_info = result.get("cochange_info")
             if cochange_info:
-                cochange_lines = ModuleFormatter._format_cochange_info(cochange_info)
+                cochange_lines = ModuleFormatter._format_cochange_info(cochange_info, language)
                 if cochange_lines:  # Only add if there's actual content
                     lines.extend(cochange_lines)
 

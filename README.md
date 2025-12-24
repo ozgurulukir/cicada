@@ -43,6 +43,7 @@ Instead of raw text dumps, CICADA gives your AI **structured, pre-indexed knowle
 | Misses aliased imports | Tracks all reference types |
 | No semantic understanding | Keyword search finds `verify_credentials` when you ask for "authentication" |
 
+
 ### What You Get
 
 - **AST-level indexing** – Module/function/class definitions with signatures, specs, docs

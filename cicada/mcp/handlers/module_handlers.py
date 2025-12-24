@@ -38,6 +38,33 @@ class ModuleSearchHandler:
         self.index = index
         self.config = config
 
+    def _get_function_bounds(
+        self, module_name: str, function_name: str, arity: int
+    ) -> tuple[int, int]:
+        """
+        Look up a function's line bounds from the index.
+
+        Args:
+            module_name: Name of the module containing the function
+            function_name: Name of the function
+            arity: Function arity
+
+        Returns:
+            Tuple of (start_line, end_line). Uses estimates if bounds unknown.
+        """
+        modules = self.index.get("modules", {})
+        module_data = modules.get(module_name, {})
+        functions = module_data.get("functions", [])
+
+        for func in functions:
+            if func.get("name") == function_name and func.get("arity", 0) == arity:
+                start_line = func.get("line", 1)
+                end_line = func.get("end_line", start_line + self.APPROXIMATE_FUNCTION_LENGTH)
+                return (start_line, end_line)
+
+        # Function not found - return reasonable defaults
+        return (1, self.APPROXIMATE_FUNCTION_LENGTH)
+
     def _collect_transitive_dependencies(
         self,
         module_name: str,
@@ -446,8 +473,9 @@ class ModuleSearchHandler:
                 if usage_results:
                     result += "\n\n---\n\n## Module Usage (what calls it)\n\n"
                     # Format the usage data directly (no header parsing needed)
+                    language = self.index.get("metadata", {}).get("language", "elixir")
                     usage_text = ModuleFormatter.format_module_usage_markdown(
-                        module_name, usage_results
+                        module_name, usage_results, language
                     )
                     # Skip the first line (header) from the usage formatter
                     usage_lines = usage_text.split("\n")
@@ -616,6 +644,79 @@ class ModuleSearchHandler:
                     }
                 )
 
+        # Fast path: use reverse_calls index to find function calls to this module
+        reverse_calls = self.index.get("reverse_calls", {})
+        if reverse_calls:
+            # Get target module's functions and file path for matching
+            target_module_data = self.index["modules"].get(module_name, {})
+            target_file = target_module_data.get("file", "")
+            target_functions = target_module_data.get("functions", [])
+
+            # Build set of target function names for matching
+            target_func_names = {f["name"] for f in target_functions}
+
+            # Search reverse_calls for calls to this module's functions
+            module_calls_from_reverse = {}
+            for key, callers in reverse_calls.items():
+                # Key format: "ModuleName.functionName" or "functionName"
+                key_parts = key.rsplit(".", 1)
+                if len(key_parts) == 2:
+                    key_module, key_func = key_parts
+                    # Check if this key matches our target module
+                    if key_module != module_name and not (
+                        target_file and key_module == target_file.rsplit(".", 1)[0]
+                    ):
+                        continue
+                else:
+                    key_func = key_parts[0]
+                    # For bare function names, only match if in our target functions
+                    if key_func not in target_func_names:
+                        continue
+
+                for caller in callers:
+                    caller_module = caller["module"]
+                    if caller_module == module_name:
+                        continue  # Skip self-references
+
+                    caller_key = f"{caller_module}|{caller['function']}"
+                    if caller_key not in module_calls_from_reverse:
+                        module_calls_from_reverse[caller_key] = {
+                            "calling_module": caller_module,
+                            "file": caller["file"],
+                            "calls": {},
+                        }
+
+                    called_func_key = f"{key_func}/0"
+                    if called_func_key not in module_calls_from_reverse[caller_key]["calls"]:
+                        # Build calling_function with bounds for formatter compatibility
+                        calling_function = None
+                        if caller["function"]:
+                            start_line, end_line = self._get_function_bounds(
+                                caller_module, caller["function"], caller["arity"]
+                            )
+                            calling_function = {
+                                "name": caller["function"],
+                                "arity": caller["arity"],
+                                "start_line": start_line,
+                                "end_line": end_line,
+                            }
+                        module_calls_from_reverse[caller_key]["calls"][called_func_key] = {
+                            "called_function": key_func,
+                            "called_arity": 0,
+                            "calling_function": calling_function,
+                            "lines": [],
+                            "alias_used": None,
+                        }
+                    module_calls_from_reverse[caller_key]["calls"][called_func_key]["lines"].append(
+                        caller["line"]
+                    )
+
+            # Merge reverse index results with existing function_calls
+            for _caller_key, data in module_calls_from_reverse.items():
+                # Convert calls dict to list
+                data["calls"] = list(data["calls"].values())
+                usage_results["function_calls"].append(data)
+
         # Apply usage type filter if not 'all'
         if usage_type != "all":
             from cicada.mcp.filter_utils import filter_by_file_type
@@ -656,9 +757,12 @@ class ModuleSearchHandler:
         usage_results = self._get_module_usage_data(module_name, usage_type)
 
         # Format results
+        language = self.index.get("metadata", {}).get("language", "elixir")
         if output_format == "json":
             result = ModuleFormatter.format_module_usage_json(module_name, usage_results)
         else:
-            result = ModuleFormatter.format_module_usage_markdown(module_name, usage_results)
+            result = ModuleFormatter.format_module_usage_markdown(
+                module_name, usage_results, language
+            )
 
         return [TextContent(type="text", text=result)]

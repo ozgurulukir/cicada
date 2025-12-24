@@ -13,6 +13,31 @@ from typing import Any
 
 import cicada.languages.scip.scip_pb2 as scip_pb2
 
+# Lazy imports for symbol_types modules to avoid circular imports
+# These are imported at module load time but after the class is defined
+_python_symbols = None
+_typescript_symbols = None
+
+
+def _get_python_symbols():
+    """Lazy import for Python symbol types module."""
+    global _python_symbols
+    if _python_symbols is None:
+        import cicada.languages.python.symbol_types as ps
+
+        _python_symbols = ps
+    return _python_symbols
+
+
+def _get_typescript_symbols():
+    """Lazy import for TypeScript symbol types module."""
+    global _typescript_symbols
+    if _typescript_symbols is None:
+        import cicada.languages.typescript.symbol_types as ts
+
+        _typescript_symbols = ts
+    return _typescript_symbols
+
 
 @dataclass
 class SymbolData:
@@ -143,10 +168,16 @@ class SCIPConverter:
             file_modules = self._process_document_data(doc_data, symbol_map, global_arity_map)
             modules.update(file_modules)
 
+        # Phase 3: Build reverse call index for O(1) "what calls this" queries
+        reverse_calls = self._build_reverse_call_index(modules)
+
         # Build metadata
         metadata = self._build_metadata(scip_index, repo_path, len(modules))
 
-        return {"modules": modules, "metadata": metadata}
+        result = {"modules": modules, "metadata": metadata}
+        if reverse_calls:
+            result["reverse_calls"] = reverse_calls
+        return result
 
     def _build_symbol_map(self, scip_index: scip_pb2.Index) -> dict:
         """Build a map of symbol -> SymbolInformation for quick lookup."""
@@ -256,8 +287,12 @@ class SCIPConverter:
             line: Line number (1-indexed)
             call_sites: List to store call site data
         """
-        # Only collect if extract_references is enabled and symbol is a function call
-        if self.extract_references and symbol.endswith("()."):
+        if not self.extract_references:
+            return
+
+        # Use language-aware symbol type detection to identify callables
+        symbol_type = self._get_symbol_type(symbol)
+        if symbol_type in ("function", "method"):
             call_sites.append(
                 CallSite(
                     callee_symbol=symbol,
@@ -373,13 +408,17 @@ class SCIPConverter:
                     occurrence, symbol, line, symbol_type, symbols, function_ranges, param_counts
                 )
 
-            # Handle call sites and imports (ReadAccess, not Definition)
+            # Handle call sites and imports (non-definitions)
+            # Note: scip-typescript doesn't set ReadAccess for function calls,
+            # so we also check for non-definition callable symbols
+            is_callable_reference = not is_definition and symbol_type in ("function", "method")
             if is_read_access and not is_definition:
-                # Process function/method calls
-                self._process_call_site(symbol, line, call_sites)
-
-                # Process import statements
+                # Process import statements (requires ReadAccess)
                 self._process_import(symbol, line, dependencies, imports_by_line, seen_imports)
+
+            # Process call sites - either ReadAccess OR callable reference
+            if (is_read_access or is_callable_reference) and not is_definition:
+                self._process_call_site(symbol, line, call_sites)
 
         # Consolidate imports from imports_by_line
         dependencies.extend(imports_by_line.values())
@@ -678,6 +717,22 @@ class SCIPConverter:
             module_data["type"] = "class"
             module_data["parent_module"] = self._get_file_module_name(doc_data.relative_path)
 
+            # Set module_kind from SCIP SymbolInformation.kind, with moduledoc fallback
+            module_kind = "unknown"
+            if symbol_info and hasattr(symbol_info, "kind"):
+                module_kind = self._scip_kind_to_module_kind(symbol_info.kind)
+
+            # If SCIP kind is unknown/unspecified, try parsing moduledoc
+            if module_kind == "unknown":
+                moduledoc = module_data.get("moduledoc", "")
+                module_kind = self._extract_module_kind_from_moduledoc(moduledoc)
+
+            # Final fallback to "class" for class-type modules
+            if module_kind == "unknown":
+                module_kind = "class"
+
+            module_data["module_kind"] = module_kind
+
             modules[full_class_name] = module_data
 
         # Build file-level module for top-level functions
@@ -709,6 +764,7 @@ class SCIPConverter:
                 "calls": module_calls,
                 "dependencies": self._merge_dependencies_to_dict(doc_data.dependencies),
                 "type": "module",
+                "module_kind": "module",  # File-level modules are always "module" kind
                 "classes": class_metadata_list,  # Track classes defined in this module
                 "aliases": doc_data.aliases,
                 "imports": [dep.module for dep in doc_data.dependencies],
@@ -1109,46 +1165,84 @@ class SCIPConverter:
         """
         Determine symbol type by parsing SCIP symbol descriptor.
 
+        Delegates to language-specific modules based on the SCIP scheme prefix.
+
         SCIP symbols have format: scheme language package version descriptor
-        Examples:
-        - scip-python python sample_python 0.1.0 calculator/__init__: -> module
-        - scip-python python sample_python 0.1.0 calculator/Calculator# -> class
-        - scip-python python sample_python 0.1.0 calculator/Calculator#add(). -> method
-        - scip-python python sample_python 0.1.0 calculator/helper_function(). -> function
-        - scip-python python sample_python 0.1.0 calculator/Calculator#add().(x) -> parameter
 
         Returns:
-            One of: 'class', 'method', 'function', 'module', 'parameter', 'unknown'
+            One of: 'class', 'method', 'function', 'module', 'parameter',
+                   'attribute', 'unknown'
         """
         parts = symbol.split()
         if len(parts) < 5:
             return "unknown"
 
+        scheme = parts[0]
         descriptor = " ".join(parts[4:])
 
-        # Parameter: ends with .(param_name)
-        if re.match(r".*\.\([^)]+\)$", descriptor):
-            return "parameter"
+        # Delegate to language-specific symbol type detection
+        if scheme.startswith(("scip-typescript", "scip-javascript")):
+            return _get_typescript_symbols().get_symbol_type(descriptor)
+        else:
+            # Default to Python-style parsing (works for Python and unknown languages)
+            return _get_python_symbols().get_symbol_type(descriptor)
 
-        # Module/namespace: ends with :
-        if descriptor.endswith(":"):
-            return "module"
+    def _scip_kind_to_module_kind(self, kind: int) -> str:
+        """
+        Map SCIP SymbolInformation.Kind to module_kind string.
 
-        # Class: ends with # (no method following)
-        if descriptor.endswith("#"):
+        SCIP Kind enum values (from scip.proto):
+        - Class = 7
+        - Interface = 21
+        - TypeAlias = 55
+        - Type = 54
+        - Module = 29
+        - Struct = 49
+        - Enum = 11
+        - Trait = 53
+        - UnspecifiedKind = 0
+
+        Returns one of: 'class', 'interface', 'type_alias', 'module', 'struct',
+                        'enum', 'trait', 'unknown'
+        """
+        kind_mapping = {
+            7: "class",  # Class
+            21: "interface",  # Interface
+            55: "type_alias",  # TypeAlias
+            54: "type_alias",  # Type (generic type definition)
+            29: "module",  # Module
+            49: "struct",  # Struct
+            11: "enum",  # Enum
+            53: "trait",  # Trait
+            0: "unknown",  # UnspecifiedKind
+        }
+        return kind_mapping.get(kind, "unknown")
+
+    def _extract_module_kind_from_moduledoc(self, moduledoc: str) -> str:
+        """
+        Extract module_kind from moduledoc code fence.
+
+        TypeScript/JavaScript moduledocs have patterns like:
+        - ```ts\ninterface StoreApi\n``` -> 'interface'
+        - ```ts\ntype SetStateInternal\n``` -> 'type_alias'
+        - ```ts\nclass Container\n``` -> 'class'
+        - ```ts\nenum Status\n``` -> 'enum'
+
+        This is a fallback when SCIP kind is UnspecifiedKind (0).
+        Returns 'unknown' if no pattern matches.
+        """
+        if not moduledoc:
+            return "unknown"
+
+        # Check for TypeScript/JavaScript patterns
+        if "```ts\ninterface " in moduledoc or "```typescript\ninterface " in moduledoc:
+            return "interface"
+        if "```ts\ntype " in moduledoc or "```typescript\ntype " in moduledoc:
+            return "type_alias"
+        if "```ts\nclass " in moduledoc or "```typescript\nclass " in moduledoc:
             return "class"
-
-        # Method: contains # and ends with ().
-        if "#" in descriptor and descriptor.endswith("()."):
-            return "method"
-
-        # Function: no # but ends with ().
-        if "#" not in descriptor and descriptor.endswith("()."):
-            return "function"
-
-        # Attribute/variable: ends with . (but not ().)
-        if descriptor.endswith(".") and not descriptor.endswith("()."):
-            return "attribute"
+        if "```ts\nenum " in moduledoc or "```typescript\nenum " in moduledoc:
+            return "enum"
 
         return "unknown"
 
@@ -1160,6 +1254,8 @@ class SCIPConverter:
         - scip-python python myproject 1.0 mymodule/MyClass# -> 'MyClass'
         - scip-python python myproject 1.0 mymodule/MyClass#method(). -> 'method'
         - scip-python python myproject 1.0 mymodule/function(). -> 'function'
+        - scip-typescript npm pkg 1.0 src/file.ts:Class#method. -> 'method'
+        - scip-typescript npm pkg 1.0 src/file.ts:function. -> 'function'
 
         Returns the appropriate name for each symbol type.
         """
@@ -1169,11 +1265,36 @@ class SCIPConverter:
         if len(parts) < 5:
             return symbol  # Fallback
 
+        scheme = parts[0]
         descriptor = " ".join(parts[4:])  # Join remaining parts
 
-        # Remove trailing . and ()
+        # Remove trailing .
         descriptor = descriptor.rstrip(".")
 
+        # TypeScript/JavaScript: uses / for file path, # for class members, (). for callables
+        # Note: TypeScript DOES use (). suffix for functions/methods (similar to Python)
+        if scheme.startswith(("scip-typescript", "scip-javascript")):
+            # Strip trailing () if present (TypeScript uses (). for callables)
+            if descriptor.endswith("()"):
+                descriptor = descriptor[:-2]
+
+            # For classes (ends with #): get class name before #
+            if descriptor.endswith("#"):
+                # e.g., "`file.ts`/Calculator#" -> "Calculator"
+                descriptor = descriptor.rstrip("#")
+                name = descriptor.split("/")[-1]
+            # For methods (contains # with content after): get part after #
+            elif "#" in descriptor:
+                # e.g., "`file.ts`/Calculator#add" -> "add"
+                name = descriptor.split("#")[-1]
+            # For module-level functions: get part after /
+            elif "/" in descriptor:
+                name = descriptor.split("/")[-1]
+            else:
+                name = descriptor
+            return name
+
+        # Python and other languages: use () for callables
         # For classes (ending with #), remove # and get last / component
         if descriptor.endswith("#"):
             descriptor = descriptor.rstrip("#")
@@ -1237,12 +1358,14 @@ class SCIPConverter:
             "scip-python python pkg 1.0 operations/__init__:" -> "operations"
             "scip-python python pkg 1.0 utils/chain_add()." -> "utils"
             "scip-python python pkg 1.0 typing/List." -> "typing"
+            "scip-typescript npm pkg 1.0 `file.ts`/add()." -> "file.ts"
 
         Args:
             symbol: SCIP symbol string
 
         Returns:
-            Module name, or None if can't be extracted
+            Module name, or None if can't be extracted.
+            Note: Backticks from TypeScript path wrappers are stripped.
         """
         parts = symbol.split()
         if len(parts) < 5:
@@ -1264,6 +1387,7 @@ class SCIPConverter:
         if "/" in descriptor:
             # For "utils/chain_add" -> "utils"
             # For "typing/List" -> "typing"
+            # For TypeScript: "`file.ts`/add" -> "file.ts"
             module_path = descriptor.split("/")[0]
             return module_path.strip("`")
         elif descriptor:
@@ -1441,3 +1565,59 @@ class SCIPConverter:
                 }
 
         return metadata
+
+    def _build_reverse_call_index(self, modules: dict) -> dict[str, list[dict]]:
+        """
+        Build reverse lookup from callee to callers for O(1) "what calls this" queries.
+
+        Iterates through all modules and functions, extracting call sites and inverting
+        the relationship: instead of "function X calls [A, B, C]", we build
+        "function A is called by [X, Y, Z]".
+
+        Args:
+            modules: The fully processed modules dict from convert()
+
+        Returns:
+            Dict mapping "ModuleName.functionName" to list of caller info dicts.
+            Each caller dict has: module, function, arity, file, line
+        """
+        reverse_index: dict[str, list[dict]] = {}
+
+        for module_name, module_data in modules.items():
+            file_path = module_data.get("file", "")
+
+            for func in module_data.get("functions", []):
+                caller_name = func.get("name")
+                caller_arity = func.get("arity", 0)
+
+                # Process raw call sites (SCIP format with callee symbol)
+                for call in func.get("calls", []):
+                    callee_symbol = call.get("callee", "")
+                    call_line = call.get("line", 0)
+
+                    if not callee_symbol:
+                        continue
+
+                    # Extract function name and module from SCIP symbol
+                    callee_name = self._extract_name(callee_symbol)
+                    callee_module = self._extract_module_from_symbol(callee_symbol)
+
+                    if not callee_name:
+                        continue
+
+                    # Build key: "Module.function" or just "function"
+                    key = f"{callee_module}.{callee_name}" if callee_module else callee_name
+
+                    caller_ref = {
+                        "module": module_name,
+                        "function": caller_name,
+                        "arity": caller_arity,
+                        "file": file_path,
+                        "line": call_line,
+                    }
+
+                    if key not in reverse_index:
+                        reverse_index[key] = []
+                    reverse_index[key].append(caller_ref)
+
+        return reverse_index

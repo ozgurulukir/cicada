@@ -8,7 +8,7 @@ formatter based on the language identifier.
 from cicada.languages.elixir.formatter import ElixirFormatter
 from cicada.languages.erlang.formatter import ErlangFormatter
 from cicada.languages.formatter_interface import BaseLanguageFormatter
-from cicada.languages.scip.formatter import PythonFormatter
+from cicada.languages.scip.formatter import PythonFormatter, TypeScriptFormatter
 
 
 def get_language_formatter(language: str) -> BaseLanguageFormatter:
@@ -37,6 +37,7 @@ def get_language_formatter(language: str) -> BaseLanguageFormatter:
         "elixir": ElixirFormatter(),
         "erlang": ErlangFormatter(),
         "python": PythonFormatter(),
+        "typescript": TypeScriptFormatter(),
     }
 
     if language not in formatters:

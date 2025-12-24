@@ -140,7 +140,7 @@ class TestPythonSCIPIndexer:
         with patch.object(
             SCIPPythonInstaller, "get_scip_python_path", return_value=fake_scip_python_path
         ):
-            with patch("cicada.languages.python.indexer.subprocess.run") as mock_run:
+            with patch("cicada.languages.scip.indexer.subprocess.run") as mock_run:
                 # Mock successful subprocess run
                 mock_result = Mock()
                 mock_result.returncode = 0
@@ -186,7 +186,9 @@ class TestPythonSCIPIndexer:
                 with pytest.raises(RuntimeError) as exc_info:
                     indexer._run_scip_python(tmp_path)
 
-                assert "scip-python indexing failed" in str(exc_info.value)
+                error = str(exc_info.value).lower()
+                assert "scip-python indexing failed" in error
+                assert "failed to index" in error
                 assert "failed to index" in str(exc_info.value)
 
     def test_run_scip_python_file_not_generated(self, indexer, tmp_path):
@@ -406,7 +408,9 @@ class TestPythonSCIPIndexer:
                     verbose_indexer.index_repository(repo_path, output_path, verbose=True)
 
                     captured = capsys.readouterr()
-                    assert "Indexing Python repository" in captured.out
+                    # Make assertion robust to language name changes
+                    expected_msg = f"indexing {verbose_indexer.get_language_name()} repository"
+                    assert expected_msg in captured.out.lower()
                     assert "SCIP index" in captured.out
                     assert "Index saved to" in captured.out
                     assert "Cleaned up temporary file" in captured.out
@@ -428,7 +432,7 @@ class TestPythonIndexerHelperMethods:
         """Create a verbose indexer."""
         return PythonSCIPIndexer(verbose=True)
 
-    # Tests for _find_python_files
+    # Tests for _find_source_files
 
     def test_find_python_files_basic(self, indexer, tmp_path):
         """Should find Python files in repository."""
@@ -441,7 +445,7 @@ class TestPythonIndexerHelperMethods:
         subdir.mkdir()
         (subdir / "file3.py").touch()
 
-        files = list(indexer._find_python_files(repo))
+        files = list(indexer._find_source_files(repo))
         assert len(files) == 3
 
     def test_find_python_files_excludes_pycache(self, indexer, tmp_path):
@@ -454,7 +458,7 @@ class TestPythonIndexerHelperMethods:
         pycache.mkdir()
         (pycache / "cached.py").touch()
 
-        files = list(indexer._find_python_files(repo))
+        files = list(indexer._find_source_files(repo))
         assert len(files) == 1
         assert files[0].name == "main.py"
 
@@ -471,7 +475,7 @@ class TestPythonIndexerHelperMethods:
         venv2.mkdir()
         (venv2 / "lib.py").touch()
 
-        files = list(indexer._find_python_files(repo))
+        files = list(indexer._find_source_files(repo))
         assert len(files) == 1
         assert files[0].name == "main.py"
 
@@ -485,7 +489,7 @@ class TestPythonIndexerHelperMethods:
         deep.mkdir(parents=True)
         (deep / "deep.py").touch()
 
-        files = list(indexer._find_python_files(repo))
+        files = list(indexer._find_source_files(repo))
         assert len(files) == 2
         file_names = [f.name for f in files]
         assert "root.py" in file_names
@@ -496,7 +500,7 @@ class TestPythonIndexerHelperMethods:
         repo = tmp_path / "repo"
         repo.mkdir()
 
-        files = list(indexer._find_python_files(repo))
+        files = list(indexer._find_source_files(repo))
         assert files == []
 
     # Tests for _extract_string_keywords
@@ -951,7 +955,7 @@ class TestPythonIndexerHelperMethods:
         save_file_hashes(str(hashes_path), {"test.py": "abc123"})
 
         # Mock the file finding and hash computation to simulate no changes
-        with patch.object(verbose_indexer, "_find_python_files", return_value=[py_file]):
+        with patch.object(verbose_indexer, "_find_source_files", return_value=[py_file]):
             with patch(
                 "cicada.languages.python.indexer.compute_hashes_for_files",
                 return_value={"test.py": "abc123"},  # Same hash as saved
