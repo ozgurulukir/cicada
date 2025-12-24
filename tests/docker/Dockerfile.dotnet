@@ -1,0 +1,30 @@
+# .NET language test - Shows what's needed for C# and VB indexing
+
+FROM cicada-base
+
+# Install .NET SDK
+RUN apt-get update && apt-get install -y \
+    wget \
+    && wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh \
+    && chmod +x ./dotnet-install.sh \
+    && ./dotnet-install.sh --channel 8.0 --install-dir /usr/share/dotnet \
+    && ln -s /usr/share/dotnet/dotnet /usr/local/bin/dotnet \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install scip-dotnet
+RUN dotnet tool install --global scip-dotnet
+ENV PATH="/root/.dotnet/tools:$PATH"
+
+# Copy test fixtures
+COPY tests/fixtures/sample_csharp /workspace/project_csharp
+COPY tests/fixtures/sample_vb /workspace/project_vb
+
+# Test C# indexing
+WORKDIR /workspace/project_csharp
+RUN python -m cicada claude --fast && \
+    echo "✅ C# indexing successful"
+
+# Test VB indexing
+WORKDIR /workspace/project_vb
+RUN python -m cicada claude --fast && \
+    echo "✅ VB indexing successful"

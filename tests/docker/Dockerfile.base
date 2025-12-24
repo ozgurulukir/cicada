@@ -1,0 +1,28 @@
+# Base Dockerfile for Cicada testing
+# Minimal Python environment with Cicada installed
+
+FROM python:3.11-slim
+
+# Install system dependencies (git is required by Cicada)
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:$PATH"
+
+# Copy Cicada source
+WORKDIR /cicada
+COPY . .
+
+# Install Cicada
+RUN uv sync
+
+# Set up PATH for cicada
+ENV PATH="/cicada/.venv/bin:$PATH"
+
+WORKDIR /workspace
+
+CMD ["/bin/bash"]
