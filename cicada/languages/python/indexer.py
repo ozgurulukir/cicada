@@ -656,7 +656,7 @@ class PythonSCIPIndexer(BaseIndexer):
 
             if self.verbose and idx % 50 == 0 and pipeline:
                 print(
-                    f"\r    Processed {idx}/{total} modules (Keywords: {pipeline.stats['submitted']}, Reused: {skipped_count})",
+                    f"\r    Processed {idx}/{total} items (files + classes) - Expansion jobs: {pipeline.stats['submitted']}, Reused: {skipped_count}",
                     end="",
                     flush=True,
                 )
