@@ -8,6 +8,7 @@ This package contains language-agnostic extractors that can be used by any index
 from . import (
     elixir_signature,  # noqa: F401
     python_signature,  # noqa: F401
+    rust_signature,  # noqa: F401
 )
 from .base_signature import FunctionSignatureExtractor, SignatureExtractorRegistry
 from .keybert import KeyBERTExtractor
