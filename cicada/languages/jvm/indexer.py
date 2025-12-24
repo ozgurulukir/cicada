@@ -1,6 +1,6 @@
 """JVM repository indexers using SCIP protocol.
 
-This module provides indexers for Java, Kotlin, and Scala using
+This module provides indexers for Java and Scala using
 scip-java, which supports all JVM languages.
 """
 
@@ -24,7 +24,7 @@ _JVM_EXCLUDED_DIRS = {
 class _ScipJavaIndexerBase(GenericSCIPIndexer):
     """Base class for JVM language indexers using scip-java.
 
-    This class contains the shared logic for Java, Kotlin, and Scala
+    This class contains the shared logic for Java and Scala
     indexing since they all use the same underlying scip-java tool.
     """
 
@@ -78,18 +78,6 @@ class JavaSCIPIndexer(_ScipJavaIndexerBase):
     def get_file_extensions(self) -> list[str]:
         """Return Java file extensions."""
         return [".java"]
-
-
-class KotlinSCIPIndexer(_ScipJavaIndexerBase):
-    """Index Kotlin repositories using scip-java."""
-
-    def get_language_name(self) -> str:
-        """Return language identifier."""
-        return "kotlin"
-
-    def get_file_extensions(self) -> list[str]:
-        """Return Kotlin file extensions."""
-        return [".kt", ".kts"]
 
 
 class ScalaSCIPIndexer(_ScipJavaIndexerBase):

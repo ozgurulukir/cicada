@@ -291,15 +291,6 @@ LanguageRegistry.register_language(
     formatter_class="cicada.languages.scip.formatter.JavaFormatter",
 )
 
-# Register Kotlin (SCIP-based)
-LanguageRegistry.register_language(
-    language="kotlin",
-    parser_class=None,
-    indexer_class="cicada.languages.jvm.indexer.KotlinSCIPIndexer",
-    config=LanguageConfig.default_kotlin(),
-    formatter_class="cicada.languages.scip.formatter.KotlinFormatter",
-)
-
 # Register Scala (SCIP-based)
 LanguageRegistry.register_language(
     language="scala",
@@ -361,15 +352,6 @@ LanguageRegistry.register_language(
     indexer_class="cicada.languages.dart.indexer.DartSCIPIndexer",
     config=LanguageConfig.default_dart(),
     formatter_class="cicada.languages.scip.formatter.DartFormatter",
-)
-
-# Register PHP (SCIP-based)
-LanguageRegistry.register_language(
-    language="php",
-    parser_class=None,
-    indexer_class="cicada.languages.php.indexer.PhpSCIPIndexer",
-    config=LanguageConfig.default_php(),
-    formatter_class="cicada.languages.scip.formatter.PhpFormatter",
 )
 
 

@@ -390,7 +390,6 @@ class TestLanguageCoverage:
             "rust",
             "go",
             "java",
-            "kotlin",
             "scala",
             "c",
             "cpp",

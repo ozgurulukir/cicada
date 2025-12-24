@@ -155,21 +155,7 @@ SCIP_LANGUAGES: dict[str, SCIPLanguage] = {
         fixture_dir="sample_java",
         build_tool="gradle/maven",
         config_file="build.gradle",
-        notes=["Also supports Kotlin and Scala through scip-java"],
-    ),
-    "kotlin": SCIPLanguage(
-        name="kotlin",
-        display_name="Kotlin",
-        file_extensions=[".kt", ".kts"],
-        scip_indexer="scip-java",  # Uses scip-java
-        scip_indexer_repo="https://github.com/sourcegraph/scip-java",
-        status=ImplementationStatus.IMPLEMENTED,
-        cicada_indexer_class="cicada.languages.jvm.indexer.KotlinSCIPIndexer",
-        cicada_formatter_class="cicada.languages.scip.formatter.KotlinFormatter",
-        fixture_dir="sample_kotlin",
-        build_tool="gradle",
-        config_file="build.gradle.kts",
-        notes=["Uses scip-java indexer", "JVM language"],
+        notes=["Also supports Scala through scip-java"],
     ),
     "scala": SCIPLanguage(
         name="scala",
@@ -270,20 +256,6 @@ SCIP_LANGUAGES: dict[str, SCIPLanguage] = {
         build_tool="pub",
         config_file="pubspec.yaml",
         notes=["Community-maintained by Workiva"],
-    ),
-    "php": SCIPLanguage(
-        name="php",
-        display_name="PHP",
-        file_extensions=[".php"],
-        scip_indexer="scip-php",
-        scip_indexer_repo="https://github.com/davidrjenni/scip-php",
-        status=ImplementationStatus.IMPLEMENTED,
-        cicada_indexer_class="cicada.languages.php.indexer.PhpSCIPIndexer",
-        cicada_formatter_class="cicada.languages.scip.formatter.PhpFormatter",
-        fixture_dir="sample_php",
-        build_tool="composer",
-        config_file="composer.json",
-        notes=["Community-maintained"],
     ),
 }
 

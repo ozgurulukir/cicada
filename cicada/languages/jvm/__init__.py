@@ -1,9 +1,8 @@
-"""JVM language support for Cicada (Java, Kotlin, Scala)."""
+"""JVM language support for Cicada (Java, Scala)."""
 
 from cicada.languages.jvm.indexer import (
     JavaSCIPIndexer,
-    KotlinSCIPIndexer,
     ScalaSCIPIndexer,
 )
 
-__all__ = ["JavaSCIPIndexer", "KotlinSCIPIndexer", "ScalaSCIPIndexer"]
+__all__ = ["JavaSCIPIndexer", "ScalaSCIPIndexer"]

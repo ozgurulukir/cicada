@@ -84,18 +84,15 @@ def detect_project_language(repo_path: Path) -> str:
     if (repo_path / "go.mod").exists():
         return "go"
 
-    # Check for JVM language markers (Java, Kotlin, Scala)
+    # Check for JVM language markers (Java, Scala)
     # Check Scala first (build.sbt is unique to Scala)
     if (repo_path / "build.sbt").exists():
         return "scala"
 
-    # Check for Gradle/Maven projects
+    # Check for Gradle/Maven projects (Java)
     jvm_markers = ["build.gradle", "build.gradle.kts", "pom.xml"]
     for marker in jvm_markers:
         if (repo_path / marker).exists():
-            # Check if it's Kotlin (presence of .kt files or kotlin in build file)
-            if any(repo_path.rglob("*.kt")):
-                return "kotlin"
             return "java"
 
     # Check for C/C++ markers
@@ -124,17 +121,13 @@ def detect_project_language(repo_path: Path) -> str:
     if (repo_path / "pubspec.yaml").exists():
         return "dart"
 
-    # Check for PHP marker
-    if (repo_path / "composer.json").exists():
-        return "php"
-
     # No recognized language
     raise ValueError(
         f"Could not detect project language in {repo_path}\n"
         "Expected one of: Python (pyproject.toml), Elixir (mix.exs), Rust (Cargo.toml), "
         "Erlang (rebar.config), TypeScript/JavaScript (package.json), Go (go.mod), "
-        "Java/Kotlin (build.gradle), Scala (build.sbt), C/C++ (CMakeLists.txt/Makefile), "
-        "Ruby (Gemfile), C# (*.csproj), Dart (pubspec.yaml), PHP (composer.json)"
+        "Java (build.gradle/pom.xml), Scala (build.sbt), C/C++ (CMakeLists.txt/Makefile), "
+        "Ruby (Gemfile), C# (*.csproj), VB (*.vbproj), Dart (pubspec.yaml)"
     )
 
 

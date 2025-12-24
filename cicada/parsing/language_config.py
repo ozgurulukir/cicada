@@ -209,27 +209,6 @@ class LanguageConfig:
         )
 
     @staticmethod
-    def default_kotlin() -> "LanguageConfig":
-        """Create default Kotlin configuration."""
-        return LanguageConfig(
-            language="kotlin",
-            file_extensions=[".kt", ".kts"],
-            excluded_dirs=[
-                "build",
-                "target",
-                ".gradle",
-                ".git",
-                "node_modules",
-                "out",
-            ],
-            comment_syntax={
-                "line": "//",
-                "block_start": "/*",
-                "block_end": "*/",
-            },
-        )
-
-    @staticmethod
     def default_scala() -> "LanguageConfig":
         """Create default Scala configuration."""
         return LanguageConfig(
@@ -359,26 +338,6 @@ class LanguageConfig:
                 ".git",
                 "node_modules",
                 ".pub-cache",
-            ],
-            comment_syntax={
-                "line": "//",
-                "block_start": "/*",
-                "block_end": "*/",
-            },
-        )
-
-    @staticmethod
-    def default_php() -> "LanguageConfig":
-        """Create default PHP configuration."""
-        return LanguageConfig(
-            language="php",
-            file_extensions=[".php"],
-            excluded_dirs=[
-                "vendor",
-                ".git",
-                "node_modules",
-                "cache",
-                "storage",
             ],
             comment_syntax={
                 "line": "//",

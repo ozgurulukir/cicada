@@ -98,10 +98,6 @@ class JavaFormatter(SCIPFormatter):
     """Formatter for Java language conventions."""
 
 
-class KotlinFormatter(SCIPFormatter):
-    """Formatter for Kotlin language conventions."""
-
-
 class ScalaFormatter(SCIPFormatter):
     """Formatter for Scala language conventions."""
 
@@ -128,7 +124,3 @@ class VBFormatter(SCIPFormatter):
 
 class DartFormatter(SCIPFormatter):
     """Formatter for Dart language conventions."""
-
-
-class PhpFormatter(SCIPFormatter):
-    """Formatter for PHP language conventions."""
