@@ -260,7 +260,18 @@ def get_tool_definitions() -> list[Tool]:
                     },
                     "context_lines": {
                         "type": "integer",
-                        "description": "Number of context lines around snippets (default: 2). Only used when show_snippets=true.",
+                        "description": "Context lines around definition (default: 2). Symmetric like -C. Auto-enables snippets.",
+                        "cli_short": "C",
+                    },
+                    "context_before": {
+                        "type": "integer",
+                        "description": "Lines before definition (-B). Overrides context_lines. Auto-enables snippets.",
+                        "cli_short": "B",
+                    },
+                    "context_after": {
+                        "type": "integer",
+                        "description": "Lines after definition (-A). Overrides context_lines. Auto-enables snippets.",
+                        "cli_short": "A",
                     },
                     "verbose": {
                         "type": "boolean",

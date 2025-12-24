@@ -205,6 +205,47 @@ class TestSchemaToArgparse:
         args = parser.parse_args(["--threshold", "3.14"])
         assert args.threshold == 3.14
 
+    def test_short_flag_alias(self):
+        """Test that cli_short creates a short flag alias."""
+        schema = {
+            "type": "integer",
+            "description": "Context lines after match",
+            "cli_short": "A",
+        }
+        parser = argparse.ArgumentParser()
+        schema_to_argparse("context_after", schema, parser)
+
+        # Short flag works
+        args = parser.parse_args(["-A", "5"])
+        assert args.context_after == 5
+
+        # Long flag also works
+        args = parser.parse_args(["--context-after", "3"])
+        assert args.context_after == 3
+
+    def test_multiple_short_flags(self):
+        """Test multiple parameters with short flags."""
+        parser = argparse.ArgumentParser()
+
+        schema_a = {"type": "integer", "description": "After", "cli_short": "A"}
+        schema_b = {"type": "integer", "description": "Before", "cli_short": "B"}
+        schema_c = {"type": "integer", "description": "Context", "cli_short": "C"}
+
+        schema_to_argparse("context_after", schema_a, parser)
+        schema_to_argparse("context_before", schema_b, parser)
+        schema_to_argparse("context_lines", schema_c, parser)
+
+        # All short flags work together
+        args = parser.parse_args(["-A", "5", "-B", "2", "-C", "3"])
+        assert args.context_after == 5
+        assert args.context_before == 2
+        assert args.context_lines == 3
+
+        # Mix of short and long flags
+        args = parser.parse_args(["-A", "5", "--context-before", "2"])
+        assert args.context_after == 5
+        assert args.context_before == 2
+
     def test_optional_array_parameter(self):
         """Test optional array parameter (not positional)."""
         schema = {"type": "array", "items": {"type": "string"}, "description": "Keywords"}
@@ -465,6 +506,39 @@ class TestRegisterToolSubparsers:
         assert args.identifier == "MyApp.Auth.verify_token/2"
         assert args.what_calls_it is True
         assert args.type == "function"
+
+    def test_query_tool_context_short_flags(self):
+        """Test query tool -A, -B, -C short flags for context lines."""
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="tool")
+
+        tools = get_tool_definitions()
+        register_tool_subparsers(subparsers, tools)
+
+        # Test -C (context_lines) short flag
+        args = parser.parse_args(["query", "auth", "-C", "5"])
+        assert args.context_lines == 5
+
+        # Test -A (context_after) short flag
+        args = parser.parse_args(["query", "auth", "-A", "3"])
+        assert args.context_after == 3
+
+        # Test -B (context_before) short flag
+        args = parser.parse_args(["query", "auth", "-B", "2"])
+        assert args.context_before == 2
+
+        # Test all three together
+        args = parser.parse_args(["query", "auth", "-C", "4", "-B", "2", "-A", "6"])
+        assert args.context_lines == 4
+        assert args.context_before == 2
+        assert args.context_after == 6
+
+        # Test long flags still work
+        args = parser.parse_args(
+            ["query", "auth", "--context-lines", "3", "--context-before", "1"]
+        )
+        assert args.context_lines == 3
+        assert args.context_before == 1
 
 
 if __name__ == "__main__":

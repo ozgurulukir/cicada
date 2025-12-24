@@ -75,6 +75,10 @@ class TestQueryToolValidation:
             ({"query": "auth", "offset": "1"}, "'offset' must be a non-negative integer"),
             ({"query": "auth", "context_lines": -1}, "'context_lines' must be a non-negative integer"),
             ({"query": "auth", "context_lines": "2"}, "'context_lines' must be a non-negative integer"),
+            ({"query": "auth", "context_before": -1}, "'context_before' must be a non-negative integer"),
+            ({"query": "auth", "context_before": "3"}, "'context_before' must be a non-negative integer"),
+            ({"query": "auth", "context_after": -1}, "'context_after' must be a non-negative integer"),
+            ({"query": "auth", "context_after": "3"}, "'context_after' must be a non-negative integer"),
             ({"query": "auth", "regex": True}, "'regex' parameter is not yet implemented"),
         ],
     )
@@ -137,6 +141,8 @@ class TestQueryToolExecution:
             "verbose": False,
             "offset": 0,
             "context_lines": 2,
+            "context_before": None,
+            "context_after": None,
         }
         assert FakeOrchestrator.last_index == test_server.index_manager.index
 
@@ -197,3 +203,88 @@ class TestQueryToolExecution:
             assert result[0].text == "query result"
         assert call_args["offset"] == 10
         assert call_args["context_lines"] == 5
+
+    @pytest.mark.asyncio
+    async def test_query_with_asymmetric_context(self, test_server):
+        """Test that context_before and context_after are passed through."""
+        call_args = {}
+
+        class FakeOrchestrator:
+            def __init__(self, index):
+                pass
+
+            def execute_query(self, **kwargs):
+                nonlocal call_args
+                call_args |= kwargs
+                return "query result"
+
+        with patch("cicada.query.QueryOrchestrator", FakeOrchestrator):
+            result = await test_server.call_tool(
+                "query",
+                {
+                    "query": "user",
+                    "show_snippets": True,
+                    "context_before": 3,
+                    "context_after": 5,
+                },
+            )
+
+            assert isinstance(result, list)
+            assert len(result) == 1
+            assert result[0].text == "query result"
+        assert call_args["context_before"] == 3
+        assert call_args["context_after"] == 5
+        # context_lines should still be the default
+        assert call_args["context_lines"] == 2
+        # show_snippets should be auto-enabled
+        assert call_args["show_snippets"] is True
+
+    @pytest.mark.asyncio
+    async def test_context_flags_auto_enable_snippets(self, test_server):
+        """Test that -A, -B, -C flags auto-enable show_snippets."""
+        call_args = {}
+
+        class FakeOrchestrator:
+            def __init__(self, index):
+                pass
+
+            def execute_query(self, **kwargs):
+                nonlocal call_args
+                call_args |= kwargs
+                return "query result"
+
+        # Test -C auto-enables snippets
+        with patch("cicada.query.QueryOrchestrator", FakeOrchestrator):
+            await test_server.call_tool(
+                "query",
+                {"query": "user", "context_lines": 5},
+            )
+        assert call_args["show_snippets"] is True
+        assert call_args["context_lines"] == 5
+
+        # Test -B auto-enables snippets
+        call_args = {}
+        with patch("cicada.query.QueryOrchestrator", FakeOrchestrator):
+            await test_server.call_tool(
+                "query",
+                {"query": "user", "context_before": 3},
+            )
+        assert call_args["show_snippets"] is True
+
+        # Test -A auto-enables snippets
+        call_args = {}
+        with patch("cicada.query.QueryOrchestrator", FakeOrchestrator):
+            await test_server.call_tool(
+                "query",
+                {"query": "user", "context_after": 4},
+            )
+        assert call_args["show_snippets"] is True
+
+        # Test without any context flags - snippets NOT auto-enabled
+        call_args = {}
+        with patch("cicada.query.QueryOrchestrator", FakeOrchestrator):
+            await test_server.call_tool(
+                "query",
+                {"query": "user"},
+            )
+        assert call_args["show_snippets"] is False

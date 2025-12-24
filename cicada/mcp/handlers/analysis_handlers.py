@@ -257,6 +257,8 @@ class AnalysisHandler:
         verbose: bool = False,
         offset: int = 0,
         context_lines: int = 2,
+        context_before: int | None = None,
+        context_after: int | None = None,
     ) -> list[TextContent]:
         """
         Smart code discovery - intelligently search by keywords or patterns.
@@ -272,7 +274,9 @@ class AnalysisHandler:
             show_snippets: Whether to show code snippet previews (default: False)
             verbose: Whether to show verbose output with docs and confidence (default: False)
             offset: Number of results to skip (for pagination, default: 0)
-            context_lines: Number of context lines in snippets (default: 2)
+            context_lines: Number of context lines in snippets (default: 2, like -C)
+            context_before: Override for lines before match (like -B)
+            context_after: Override for lines after match (like -A)
 
         Returns:
             TextContent with formatted query results and suggestions
@@ -300,6 +304,8 @@ class AnalysisHandler:
             verbose=verbose,
             offset=offset,
             context_lines=context_lines,
+            context_before=context_before,
+            context_after=context_after,
         )
 
         return [TextContent(type="text", text=result)]

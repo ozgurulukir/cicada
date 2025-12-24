@@ -178,7 +178,9 @@ class QueryOptions:
     arity: int | None = None
     show_snippets: bool = False
     offset: int = 0  # Skip first N results (pagination)
-    context_lines: int = 2  # Lines of context in snippets
+    context_lines: int = 2  # Lines of context in snippets (symmetric, like -C)
+    context_before: int | None = None  # Override for lines before match (-B)
+    context_after: int | None = None  # Override for lines after match (-A)
 
     # Deprecated aliases (kept for backward compatibility)
     # filter_type -> result_type (no-op, always "all")

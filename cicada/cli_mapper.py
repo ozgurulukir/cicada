@@ -49,6 +49,9 @@ def schema_to_argparse(
     cli_param_name = param_name.replace("_", "-") if not positional else param_name
     arg_dest = param_name  # Store as snake_case in namespace
 
+    # Check for short flag alias (e.g., "cli_short": "A" -> -A)
+    short_flag = schema.get("cli_short")
+
     # Handle nullable boolean special case (tri-state: true/false/null)
     if nullable_bool or schema.get("type") == ["boolean", "null"]:
         # Nullable booleans are typically optional flags, not positional
@@ -170,7 +173,11 @@ def schema_to_argparse(
         }
         if default is not None:
             arg_kwargs["default"] = default
-        parser.add_argument(f"--{cli_param_name}", **arg_kwargs)
+        # Build flag names: long flag required, short flag optional
+        flags = [f"--{cli_param_name}"]
+        if short_flag:
+            flags.insert(0, f"-{short_flag}")
+        parser.add_argument(*flags, **arg_kwargs)
 
 
 def register_tool_subparsers(

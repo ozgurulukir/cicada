@@ -602,6 +602,8 @@ class QueryOrchestrator:
         verbose: bool = False,
         offset: int = 0,
         context_lines: int = 2,
+        context_before: int | None = None,
+        context_after: int | None = None,
     ) -> str:
         """
         Format final report with results and suggestions.
@@ -614,7 +616,9 @@ class QueryOrchestrator:
             show_snippets: Whether to show code snippet previews
             verbose: Whether to show verbose output
             offset: Number of results to skip (pagination)
-            context_lines: Number of context lines in snippets
+            context_lines: Number of context lines in snippets (symmetric, like -C)
+            context_before: Override for lines before match (like -B)
+            context_after: Override for lines after match (like -A)
 
         Returns:
             Markdown formatted report
@@ -650,7 +654,9 @@ class QueryOrchestrator:
         # Results
         for i, result in enumerate(paginated_results, offset + 1):
             lines.append(
-                self._format_result_snippet(result, i, show_snippets, verbose, context_lines)
+                self._format_result_snippet(
+                    result, i, show_snippets, verbose, context_lines, context_before, context_after
+                )
             )
 
         # Suggestions
@@ -694,6 +700,8 @@ class QueryOrchestrator:
         show_snippets: bool = False,
         verbose: bool = False,
         context_lines: int = 2,
+        context_before: int | None = None,
+        context_after: int | None = None,
     ) -> str:
         """
         Format a single result as a snippet (compact by default).
@@ -703,7 +711,9 @@ class QueryOrchestrator:
             index: Result number (1-indexed)
             show_snippets: Whether to show code snippet previews
             verbose: Whether to show full details (confidence %, docs, full context)
-            context_lines: Number of context lines in snippets
+            context_lines: Number of context lines in snippets (symmetric, like -C)
+            context_before: Override for lines before match (like -B)
+            context_after: Override for lines after match (like -A)
 
         Returns:
             Formatted snippet
@@ -773,7 +783,9 @@ class QueryOrchestrator:
 
         # Code snippet preview (if enabled)
         if show_snippets:
-            snippet = self._extract_code_snippet(result.file, result.line, context_lines)
+            snippet = self._extract_code_snippet(
+                result.file, result.line, context_lines, context_before, context_after
+            )
             if snippet:
                 lines.append(f"\n```elixir\n{snippet}\n```\n")
 
@@ -796,7 +808,12 @@ class QueryOrchestrator:
         lines.append(f"   {matched_str}\n")
 
     def _extract_code_snippet(
-        self, file_path: str, line: int, context_lines: int = QueryConfig.DEFAULT_CONTEXT_LINES
+        self,
+        file_path: str,
+        line: int,
+        context_lines: int = QueryConfig.DEFAULT_CONTEXT_LINES,
+        context_before: int | None = None,
+        context_after: int | None = None,
     ) -> str | None:
         """
         Extract code snippet from file with context lines.
@@ -804,7 +821,9 @@ class QueryOrchestrator:
         Args:
             file_path: Path to the file
             line: Target line number (1-indexed)
-            context_lines: Number of context lines before and after (default: 2)
+            context_lines: Number of context lines before and after (default: 2, like -C)
+            context_before: Override for lines before match (like -B)
+            context_after: Override for lines after match (like -A)
 
         Returns:
             Formatted code snippet with line numbers, or None if file not readable
@@ -816,9 +835,13 @@ class QueryOrchestrator:
             # Convert to 0-indexed
             target_idx = line - 1
 
+            # Resolve actual before/after values (overrides take precedence)
+            before = context_before if context_before is not None else context_lines
+            after = context_after if context_after is not None else context_lines
+
             # Calculate range
-            start_idx = max(0, target_idx - context_lines)
-            end_idx = min(len(lines), target_idx + context_lines + 1)
+            start_idx = max(0, target_idx - before)
+            end_idx = min(len(lines), target_idx + after + 1)
 
             # Extract snippet with line numbers
             snippet_lines: list[str] = []
@@ -987,6 +1010,8 @@ class QueryOrchestrator:
         verbose: bool = False,
         offset: int = 0,
         context_lines: int = 2,
+        context_before: int | None = None,
+        context_after: int | None = None,
     ) -> str:
         """
         Execute a query and return formatted results.
@@ -1003,7 +1028,9 @@ class QueryOrchestrator:
             show_snippets: Whether to show code snippet previews (default: False)
             verbose: Whether to show verbose output (default: False)
             offset: Number of results to skip (pagination, default: 0)
-            context_lines: Number of context lines in snippets (default: 2)
+            context_lines: Number of context lines in snippets (default: 2, like -C)
+            context_before: Override for lines before match (like -B)
+            context_after: Override for lines after match (like -A)
 
         Returns:
             Markdown formatted report
@@ -1024,6 +1051,8 @@ class QueryOrchestrator:
             show_snippets=show_snippets,
             offset=offset,
             context_lines=context_lines,
+            context_before=context_before,
+            context_after=context_after,
         )
 
         # Analyze query
@@ -1066,4 +1095,6 @@ class QueryOrchestrator:
             verbose,
             options.offset,
             options.context_lines,
+            options.context_before,
+            options.context_after,
         )
