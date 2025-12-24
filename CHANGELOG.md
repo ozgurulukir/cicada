@@ -144,6 +144,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Without module qualifier, without arity constraint, or private function variant
 - Results include notes explaining which fallback was used
 - Improved semantic search suggestions by splitting function names into keywords
+- **Query fallbacks:** match_source broadening (strings→all), scope broadening (public→all), recent filter removal
+- **Function fallbacks:** CamelSnakeFallback (getUserName↔get_user_name), PrefixWildcardFallback (authenticate→*authenticate*)
+- Fixed: visibility field now correctly passed through KeywordSearcher results
+
+### Removed
+
+- **`find_dead_code` tool** - Removed unreliable dead code detection tool that didn't fit the exploration-focused toolset
+  - MCP tool and handler removed
+  - CLI command `cicada find-dead-code` removed
+  - All related tests removed
+  - Dead code module kept for potential future library use
 
 ### Features
 

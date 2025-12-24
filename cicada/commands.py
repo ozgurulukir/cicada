@@ -33,7 +33,6 @@ KNOWN_SUBCOMMANDS: tuple[str, ...] = (
     "watch",
     "index",
     "index-pr",
-    "find-dead-code",
     "clean",
     "status",
     "stats",
@@ -370,37 +369,6 @@ def get_argument_parser():
         help="Clean and rebuild the entire index from scratch (default: incremental update)",
     )
 
-    dead_code_parser = subparsers.add_parser(
-        "find-dead-code",
-        help="Find potentially unused public functions in Elixir codebase",
-        description="Find potentially unused public functions in Elixir codebase",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        parents=[common_parser],
-        epilog="""
-Confidence Levels:
-  high   - Zero usage, no dynamic call indicators, no behaviors/uses
-  medium - Zero usage, but module has behaviors or uses (possible callbacks)
-  low    - Zero usage, but module passed as value (possible dynamic calls)
-
-Examples:
-  cicada find-dead-code                      # Show high confidence candidates
-  cicada find-dead-code --min-confidence low # Show all candidates
-  cicada find-dead-code --format json        # Output as JSON
-        """,
-    )
-    dead_code_parser.add_argument(
-        "--format",
-        choices=["markdown", "json"],
-        default="markdown",
-        help="Output format (default: markdown)",
-    )
-    dead_code_parser.add_argument(
-        "--min-confidence",
-        choices=["high", "medium", "low"],
-        default="high",
-        help="Minimum confidence level to show (default: high)",
-    )
-
     clean_parser = subparsers.add_parser(
         "clean",
         help="Remove Cicada configuration and indexes",
@@ -653,7 +621,6 @@ def handle_command(args) -> bool:
         "watch": handle_watch,
         "index": handle_index,
         "index-pr": handle_index_pr,
-        "find-dead-code": handle_find_dead_code,
         "clean": handle_clean,
         "status": handle_status,
         "stats": handle_stats,
@@ -1004,36 +971,6 @@ def handle_index_pr(args):
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-
-
-def handle_find_dead_code(args):
-    from cicada.dead_code.analyzer import DeadCodeAnalyzer
-    from cicada.dead_code.finder import filter_by_confidence, format_json, format_markdown
-    from cicada.utils import get_index_path, load_index
-
-    index_path = get_index_path(".")
-
-    if not index_path.exists():
-        print(f"Error: Index file not found: {index_path}", file=sys.stderr)
-        print("\nRun 'cicada index' first to create the index.", file=sys.stderr)
-        sys.exit(1)
-
-    try:
-        index = load_index(index_path, raise_on_error=True)
-    except Exception as e:
-        print(f"Error loading index: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    assert index is not None, "Index should not be None after successful load"
-
-    analyzer = DeadCodeAnalyzer(index)
-    results = analyzer.analyze()
-
-    results = filter_by_confidence(results, args.min_confidence)
-
-    output = format_json(results) if args.format == "json" else format_markdown(results)
-
-    print(output)
 
 
 def handle_clean(args):

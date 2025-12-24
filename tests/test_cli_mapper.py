@@ -419,7 +419,6 @@ class TestRegisterToolSubparsers:
         assert "search-module" in subparsers.choices
         assert "search-function" in subparsers.choices
         assert "git-history" in subparsers.choices
-        assert "find-dead-code" in subparsers.choices
         assert "expand-result" in subparsers.choices
         assert "query-jq" in subparsers.choices
 
@@ -468,22 +467,6 @@ class TestRegisterToolSubparsers:
         # Parse without --recent (should be None)
         args = parser.parse_args(["git-history", "file.ex"])
         assert args.recent is None
-
-    def test_find_dead_code_optional_params(self):
-        """Test find-dead-code tool with all optional parameters."""
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers(dest="tool")
-
-        tools = get_tool_definitions()
-        register_tool_subparsers(subparsers, tools)
-
-        # Parse with no args (all optional)
-        args = parser.parse_args(["find-dead-code"])
-        assert args.tool == "find-dead-code"
-
-        # Parse with format option
-        args = parser.parse_args(["find-dead-code", "--format", "json"])
-        assert args.format == "json"
 
     def test_expand_result_with_options(self):
         """Test expand-result tool with various options."""

@@ -352,7 +352,6 @@ class TestToolIntegration:
 
         # Verify analysis tools
         assert "query" in tool_names
-        assert "find_dead_code" in tool_names
 
     @pytest.mark.asyncio
     async def test_json_output_format(self, e2e_server):
@@ -514,49 +513,6 @@ class TestErrorHandling:
         assert len(result) == 1
         text = result[0].text
         assert "could not find" in text.lower() or "not found" in text.lower()
-
-
-class TestDeadCodeAnalysis:
-    """Test dead code detection functionality."""
-
-    @pytest.mark.asyncio
-    async def test_find_dead_code_high_confidence(self, e2e_server):
-        """Test finding dead code with high confidence."""
-        result = await e2e_server.call_tool(
-            "find_dead_code", {"min_confidence": "high", "format": "markdown"}
-        )
-
-        assert len(result) == 1
-        text = result[0].text
-        # Should return analysis results or message
-        assert text
-
-    @pytest.mark.asyncio
-    async def test_find_dead_code_all_confidence_levels(self, e2e_server):
-        """Test dead code analysis with different confidence levels."""
-        for confidence in ["high", "medium", "low"]:
-            result = await e2e_server.call_tool(
-                "find_dead_code", {"min_confidence": confidence, "format": "markdown"}
-            )
-
-            assert len(result) == 1
-            assert result[0].text
-
-    @pytest.mark.asyncio
-    async def test_find_dead_code_json_format(self, e2e_server):
-        """Test dead code analysis with JSON output."""
-        result = await e2e_server.call_tool(
-            "find_dead_code", {"min_confidence": "high", "format": "json"}
-        )
-
-        assert len(result) == 1
-        text = result[0].text
-        # Should be valid JSON
-        try:
-            data = json.loads(text)
-            assert isinstance(data, (dict, list))
-        except json.JSONDecodeError:
-            pytest.fail("Dead code output is not valid JSON")
 
 
 class TestModuleResolution:

@@ -153,7 +153,6 @@ make publisher
       "description": "Semantic search by keywords (requires opt-in)"
     },
     {
-      "name": "find_dead_code",
       "description": "Find potentially unused public functions"
     }
   ],

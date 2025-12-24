@@ -89,3 +89,4 @@ link/
 # AI editor configs
 .codex/
 .gemini/
+tests/fixtures/sample_rust/target/

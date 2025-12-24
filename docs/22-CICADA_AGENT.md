@@ -370,7 +370,6 @@ Analyze code dependencies, assess refactoring risks, and identify safe modificat
 - `mcp__cicada__query` - Initial discovery
 - `mcp__cicada__search_module` - Module dependencies (what_calls_it, what_it_calls)
 - `mcp__cicada__search_function` - Function call sites and dependencies
-- `mcp__cicada__find_dead_code` - Identify unused public functions
 - `mcp__cicada__query_jq` - Advanced index queries
 
 ## Core Capabilities
@@ -394,7 +393,6 @@ search_module(module_name="Target", what_it_calls=true, dependency_depth=2)
 
 ### 4. Dead Code Detection
 ```python
-find_dead_code(min_confidence="high")
 ```
 
 ## Analysis Workflow

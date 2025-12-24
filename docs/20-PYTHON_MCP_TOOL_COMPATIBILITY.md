@@ -120,7 +120,6 @@ Now Python modules have both:
 | Tool | Before | After | Impact |
 |------|--------|-------|--------|
 | **search_module_usage** | ❌ Broken | ✅ **Fixed** | Shows all module imports and usage |
-| **find_dead_code** | ⚠️ False positives | ✅ **Improved** | Fewer incorrect "dead code" warnings |
 | **search_module** (what_it_calls) | ⚠️ Incomplete | ✅ **Fixed** | Shows complete dependency list |
 | **search_function** (call sites) | ⚠️ Incomplete | ✅ **Better** | Improved module resolution |
 | **query** | ✅ Working | ✅ Working | No change needed |

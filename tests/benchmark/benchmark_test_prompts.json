@@ -115,30 +115,6 @@
         }
       ]
     },
-    "code_quality": {
-      "description": "Code quality and analysis queries for elixir_project",
-      "tests": [
-        {
-          "name": "Dead Code Analysis",
-          "prompt": "Find potentially unused functions in the AB library",
-          "expected_tools": ["find_dead_code"]
-        },
-        {
-          "name": "High Confidence Dead Code",
-          "prompt": "Show me functions in the AB library that are definitely not used anywhere",
-          "expected_tools": ["find_dead_code"]
-        },
-        {
-          "name": "Module Health Check",
-          "prompt": "Analyze the AB.Validators module for unused exports",
-          "expected_tools": [
-            "search_module",
-            "find_dead_code",
-            "search_module_usage"
-          ]
-        }
-      ]
-    },
     "realistic_scenarios": {
       "description": "Real-world development scenarios using actual elixir_project modules",
       "tests": [
@@ -187,15 +163,14 @@
       "tests": [
         {
           "name": "Complete Module Audit",
-          "prompt": "Give me a complete audit of the AB.TypeParser module: all functions, their usage, git history, authors, PRs, and any dead code",
+          "prompt": "Give me a complete audit of the AB.TypeParser module: all functions, their usage, git history, authors, and PRs",
           "expected_tools": [
             "search_module",
             "search_function",
             "search_module_usage",
             "get_file_pr_history",
             "get_commit_history",
-            "get_blame",
-            "find_dead_code"
+            "get_blame"
           ]
         },
         {

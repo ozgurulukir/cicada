@@ -127,7 +127,6 @@ cicada vs --max                   # Same for VS Code
 ```bash
 cicada index [path]               # Index repository (use -f/--force with --fast/--regular/--max)
 cicada index-pr [path]            # Index GitHub PRs
-cicada find-dead-code             # Find unused functions
 cicada status                     # Show diagnostic information (index, PR index, links, agents)
 cicada stats [path]               # Display usage statistics (tool calls, tokens, execution times)
 cicada run [tool]                 # Execute MCP tools from CLI
@@ -185,7 +184,6 @@ Both `cicada` and `cicada-mcp` should accept the same subcommands:
 - `vs [path]` - Editor-specific setup
 - `index [path]` - Manual indexing
 - `index-pr [path]` - PR indexing
-- `find-dead-code` - Dead code analysis
 - `clean` - Cleanup
 
 ### Default Behavior Difference

@@ -45,7 +45,6 @@ git commit -m "Add gh CLI dependency check"
 - **DEEP-DIVE:** `mcp__cicada__search_module` - View a module's complete API and dependencies
 - **DEEP-DIVE:** `mcp__cicada__search_function` - Find function definitions and call sites
 - **UNIFIED HISTORY:** `mcp__cicada__git_history` - One tool for all git history queries
-- **ANALYSIS:** `mcp__cicada__find_dead_code` - Find potentially unused public functions
 - **DRILL-DOWN:** `mcp__cicada__expand_result` - Expand a query result to see complete details
 - **ADVANCED:** `mcp__cicada__query_jq` - Execute jq queries against the Cicada index
 
@@ -78,7 +77,6 @@ For detailed information on specific topics, see:
   - DEEP-DIVE TOOL: View a module's complete API and dependencies after discovering it with query. `mcp__cicada__search_module`
   - DEEP-DIVE TOOL: Find function definitions and call sites after discovering with query. `mcp__cicada__search_function`
   - UNIFIED HISTORY TOOL: One tool for all git history queries - replaces get_blame, get_commit_history, find_pr_for_line, and get_file_pr_history. `mcp__cicada__git_history`
-  - ANALYSIS TOOL: Find potentially unused public functions with confidence levels. `mcp__cicada__find_dead_code`
   - DRILL-DOWN TOOL: Expand a query result to see complete details. `mcp__cicada__expand_result`
   - Force refresh the code index to pick up recent file changes. `mcp__cicada__refresh_index`
   - ADVANCED: Execute jq queries directly against the Cicada index for custom analysis and data exploration. `mcp__cicada__query_jq`

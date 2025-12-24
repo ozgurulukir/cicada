@@ -205,7 +205,6 @@ Called from 5 locations:
   - PREFERRED for git history: Get commit log for files or functions. `mcp__cicada__get_commit_history`
   - PREFERRED for authorship: Git blame showing who wrote each line. `mcp__cicada__get_blame`
   - **HIGHLY RECOMMENDED for understanding "why"**: Get all PRs that modified a file with descriptions and review comments. `mcp__cicada__get_file_pr_history`
-  - Find potentially unused public functions with confidence levels. `mcp__cicada__find_dead_code`
 ```
 
 ---

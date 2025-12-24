@@ -112,7 +112,6 @@ class TestArgumentParser:
             "watch",
             "index",
             "index-pr",
-            "find-dead-code",
             "clean",
         ],
     )
@@ -224,7 +223,6 @@ class TestHandleCommand:
             ("index", "handle_index"),
             ("watch", "handle_watch"),
             ("clean", "handle_clean"),
-            ("find-dead-code", "handle_find_dead_code"),
         ],
     )
     def test_handle_command_dispatch(self, parser, command, handler_name):
@@ -921,27 +919,6 @@ class TestHandleServerHelpers:
         assert exc.value.code == 1
 
 
-class TestHandleFindDeadCode:
-    """Test handle_find_dead_code error paths."""
-
-    @patch("cicada.utils.load_index")
-    @patch("cicada.utils.get_index_path")
-    def test_find_dead_code_load_error(self, mock_get_path, mock_load, parser):
-        """Test find-dead-code handles load errors."""
-        from cicada.commands import handle_find_dead_code
-
-        mock_path = MagicMock()
-        mock_path.exists.return_value = True
-        mock_get_path.return_value = mock_path
-        mock_load.side_effect = Exception("Load failed")
-
-        args = parser.parse_args(["find-dead-code"])
-
-        with pytest.raises(SystemExit) as exc:
-            handle_find_dead_code(args)
-        assert exc.value.code == 1
-
-
 class TestHandleCleanErrors:
     """Test handle_clean error paths."""
 
@@ -1409,81 +1386,7 @@ class TestHandleIndexPR:
 
 
 # ============================================================================
-# SECTION 19: Test Handle Find Dead Code Missing Index
-# ============================================================================
-
-
-class TestHandleFindDeadCodeMissingIndex:
-    """Test handle_find_dead_code when index doesn't exist."""
-
-    @patch("cicada.utils.get_index_path")
-    def test_find_dead_code_no_index(self, mock_get_path, parser, capsys):
-        """Test find-dead-code when index doesn't exist."""
-        from cicada.commands import handle_find_dead_code
-
-        mock_path = MagicMock()
-        mock_path.exists.return_value = False
-        mock_get_path.return_value = mock_path
-
-        args = parser.parse_args(["find-dead-code"])
-
-        with pytest.raises(SystemExit) as exc:
-            handle_find_dead_code(args)
-        assert exc.value.code == 1
-
-        captured = capsys.readouterr()
-        assert "Index file not found" in captured.err
-
-    @pytest.fixture
-    def mock_dead_code_deps(self):
-        """Common mock setup for dead code tests."""
-        with (
-            patch("cicada.utils.get_index_path") as mock_path,
-            patch("cicada.utils.load_index") as mock_load,
-            patch("cicada.dead_code.analyzer.DeadCodeAnalyzer") as mock_class,
-            patch("cicada.dead_code.finder.filter_by_confidence") as mock_filter,
-        ):
-            path = MagicMock()
-            path.exists.return_value = True
-            mock_path.return_value = path
-            mock_load.return_value = {"modules": {}}
-
-            mock_analyzer = MagicMock()
-            mock_analyzer.analyze.return_value = []
-            mock_class.return_value = mock_analyzer
-            mock_filter.return_value = []
-
-            yield {"filter": mock_filter}
-
-    @patch("cicada.dead_code.finder.format_markdown")
-    def test_find_dead_code_success(self, mock_format, parser, mock_dead_code_deps, capsys):
-        """Test find-dead-code success path."""
-        from cicada.commands import handle_find_dead_code
-
-        mock_format.return_value = "No dead code found"
-
-        args = parser.parse_args(["find-dead-code"])
-        handle_find_dead_code(args)
-
-        captured = capsys.readouterr()
-        assert "No dead code found" in captured.out
-
-    @patch("cicada.dead_code.finder.format_json")
-    def test_find_dead_code_json_format(self, mock_format, parser, mock_dead_code_deps, capsys):
-        """Test find-dead-code with JSON format."""
-        from cicada.commands import handle_find_dead_code
-
-        mock_format.return_value = "[]"
-
-        args = parser.parse_args(["find-dead-code", "--format", "json"])
-        handle_find_dead_code(args)
-
-        captured = capsys.readouterr()
-        assert "[]" in captured.out
-
-
-# ============================================================================
-# SECTION 20: Test Handle Index with Watch
+# SECTION 19: Test Handle Index with Watch
 # ============================================================================
 
 

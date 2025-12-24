@@ -108,23 +108,6 @@ GIT_HISTORY_DESCRIPTION = (
     "• By author: git_history(file_path='lib/auth.ex', author='john')"
 )
 
-FIND_DEAD_CODE_DESCRIPTION = (
-    "ANALYSIS TOOL: Find potentially unused public functions with confidence levels.\n\n"
-    "Analyzes the entire codebase to identify public functions that may not be used. "
-    "Use this for codebase maintenance and cleanup efforts. "
-    "Returns results categorized by confidence level (high, medium, low).\n\n"
-    "Note: Results are best-effort - some unused functions may be part of the public API, "
-    "used dynamically via atom introspection, or used in external packages.\n"
-    "**Important:** Python support is currently experimental/WIP. Dynamic method calls and "
-    "implicit dependencies may cause false positives (functions reported as unused when they are used).\n\n"
-    "AI USAGE TIPS:\n"
-    '• Use for codebase cleanup: "What code can potentially be removed?"\n'
-    "• Start with min_confidence='high' to find most likely unused code\n"
-    "• VERIFY before deleting - may be public API, dynamic calls, or external usage\n"
-    "• Results show: function signature, location, confidence level, reasons\n"
-    "• Consider using search_function on results to verify they're truly unused"
-)
-
 EXPAND_RESULT_DESCRIPTION = (
     "DRILL-DOWN TOOL: Expand a query result to see complete details.\n\n"
     "After discovering modules or functions with query, use this tool to explore a specific result in depth. "
@@ -518,25 +501,6 @@ def get_tool_definitions() -> list[Tool]:
                     },
                 },
                 "required": ["file_path"],
-            },
-        ),
-        Tool(
-            name="find_dead_code",
-            description=FIND_DEAD_CODE_DESCRIPTION,
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "min_confidence": {
-                        "type": "string",
-                        "enum": ["high", "medium", "low"],
-                        "description": "Minimum confidence level for dead code detection. Defaults to 'high'.",
-                    },
-                    "format": {
-                        "type": "string",
-                        "enum": ["markdown", "json"],
-                        "description": "Output format. Defaults to 'markdown'.",
-                    },
-                },
             },
         ),
         Tool(

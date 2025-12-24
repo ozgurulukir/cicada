@@ -14,7 +14,6 @@ from cicada.commands import (
     handle_clean,
     handle_dir,
     handle_editor_setup,
-    handle_find_dead_code,
     handle_index,
     handle_index_pr,
     handle_install as handle_install_command,
@@ -116,15 +115,6 @@ class TestMain:
         with (
             patch.object(sys, "argv", ["cicada", "index-pr"]),
             patch("cicada.commands.handle_index_pr") as mock_handler,
-        ):
-            main()
-            mock_handler.assert_called_once()
-
-    def test_main_with_find_dead_code_subcommand(self):
-        """Should route to handle_find_dead_code"""
-        with (
-            patch.object(sys, "argv", ["cicada", "find-dead-code"]),
-            patch("cicada.commands.handle_find_dead_code") as mock_handler,
         ):
             main()
             mock_handler.assert_called_once()
@@ -630,83 +620,6 @@ class TestHandleIndexPR:
         assert exc_info.value.code == 1
         captured = capsys.readouterr()
         assert "PR indexing failed" in captured.err
-
-
-class TestHandleFindDeadCode:
-    """Tests for handle_find_dead_code function"""
-
-    @pytest.fixture
-    def mock_index_file(self, tmp_path):
-        """Create a mock index file"""
-        index_path = tmp_path / "index.json"
-        index_path.write_text(json.dumps({"modules": [], "functions": []}))
-        return index_path
-
-    def test_requires_index_file(self, tmp_path, capsys):
-        """Should error if index file not found"""
-        args = MagicMock(format="markdown", min_confidence="high")
-        missing_path = tmp_path / "missing.json"
-
-        with (
-            patch("cicada.utils.get_index_path", return_value=missing_path),
-            pytest.raises(SystemExit) as exc_info,
-        ):
-            handle_find_dead_code(args)
-
-        assert exc_info.value.code == 1
-        captured = capsys.readouterr()
-        assert "Index file not found" in captured.err
-
-    def test_calls_analyzer(self, mock_index_file):
-        """Should call DeadCodeAnalyzer and format results"""
-        args = MagicMock(format="markdown", min_confidence="high")
-
-        with (
-            patch("cicada.utils.get_index_path", return_value=mock_index_file),
-            patch("cicada.utils.load_index") as mock_load,
-            patch("cicada.dead_code.analyzer.DeadCodeAnalyzer") as mock_analyzer_class,
-            patch("cicada.dead_code.finder.filter_by_confidence") as mock_filter,
-            patch(
-                "cicada.dead_code.finder.format_markdown", return_value="# Dead Code"
-            ) as mock_format,
-        ):
-            mock_load.return_value = {"modules": [], "functions": []}
-            mock_analyzer = MagicMock()
-            mock_analyzer.analyze.return_value = []
-            mock_analyzer_class.return_value = mock_analyzer
-            mock_filter.return_value = []
-
-            handle_find_dead_code(args)
-
-            # Verify analyzer was called
-            mock_analyzer_class.assert_called_once()
-            mock_analyzer.analyze.assert_called_once()
-            mock_filter.assert_called_once()
-            mock_format.assert_called_once()
-
-    def test_json_format(self, mock_index_file):
-        """Should use JSON formatter when requested"""
-        args = MagicMock(format="json", min_confidence="high")
-
-        with (
-            patch("cicada.utils.get_index_path", return_value=mock_index_file),
-            patch("cicada.utils.load_index") as mock_load,
-            patch("cicada.dead_code.analyzer.DeadCodeAnalyzer") as mock_analyzer_class,
-            patch("cicada.dead_code.finder.filter_by_confidence") as mock_filter,
-            patch("cicada.dead_code.finder.format_json", return_value="{}") as mock_format_json,
-            patch("cicada.dead_code.finder.format_markdown") as mock_format_md,
-        ):
-            mock_load.return_value = {"modules": [], "functions": []}
-            mock_analyzer = MagicMock()
-            mock_analyzer.analyze.return_value = []
-            mock_analyzer_class.return_value = mock_analyzer
-            mock_filter.return_value = []
-
-            handle_find_dead_code(args)
-
-            # Verify JSON formatter was used, not markdown
-            mock_format_json.assert_called_once()
-            mock_format_md.assert_not_called()
 
 
 class TestHandleClean:

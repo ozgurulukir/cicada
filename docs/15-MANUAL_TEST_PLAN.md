@@ -74,7 +74,6 @@ Quick test plan before merging to main.
 - [ ] `search_function` - Find function with usage examples
 - [ ] `search_module_usage` - Track module dependencies
 - [ ] `search_by_keywords` - Semantic search (requires index with keyword extraction)
-- [ ] `find_dead_code` - MCP tool version
 - [ ] `get_commit_history` - File history
 - [ ] `get_blame` - Line-by-line ownership
 - [ ] `find_pr_for_line` - PR attribution (requires PR index)

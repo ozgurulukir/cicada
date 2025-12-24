@@ -82,7 +82,6 @@
   - Filter comments by file
 
 #### Code Quality
-- **Dead Code Detection** (`find_dead_code`)
   - Find unused public functions
   - Confidence levels (high/medium/low)
   - Accounts for callbacks, behaviors, dynamic calls

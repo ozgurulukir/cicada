@@ -111,7 +111,6 @@ CICADA provides 8 specialized MCP tools for deep code analysis and search capabi
 
 ---
 
-### 4. find_dead_code
 
 **Purpose:** Identify potentially unused public functions in your codebase.
 
@@ -364,7 +363,6 @@ All tools support flexible output formats:
 | `search_module` | Module name/pattern/file | Functions & signatures | View module API + dependencies (use `what_calls_it`/`what_it_calls`) |
 | `search_function` | Function name/pattern | Definition & call sites | Find function usage + dependencies (supports `*` and `\|`) |
 | `git_history` | File path + optional line/function | Git history (unified) | All git operations: blame, commits, PRs, function tracking |
-| `find_dead_code` | Confidence level | Unused functions report | Identify potentially dead code for cleanup |
 | `expand_result` | Module/function identifier | Complete details | Drill down from query results |
 | `query_jq` | jq expression | JSON data | Advanced index queries and custom analysis |
 | `refresh_index` | None | Update summary | Force re-index to pick up recent changes |

@@ -1,7 +1,7 @@
 """
 Analysis Tool Handlers.
 
-Handles keyword/feature search and dead code detection tools.
+Handles keyword/feature search tools.
 """
 
 import asyncio
@@ -10,13 +10,6 @@ from typing import TYPE_CHECKING, Any
 
 import jq  # type: ignore[import-untyped]
 from mcp.types import TextContent
-
-from cicada.dead_code.analyzer import DeadCodeAnalyzer
-from cicada.dead_code.finder import (
-    filter_by_confidence,
-    format_json,
-    format_markdown,
-)
 
 if TYPE_CHECKING:
     from cicada.mcp.handlers.index_manager import IndexManager
@@ -225,36 +218,6 @@ class AnalysisHandler:
             )
 
             return [TextContent(type="text", text=msg)]
-
-    async def find_dead_code(self, min_confidence: str, output_format: str) -> list[TextContent]:
-        """
-        Find potentially unused public functions.
-
-        Args:
-            min_confidence: Minimum confidence level ('high', 'medium', or 'low')
-            output_format: Output format ('markdown' or 'json')
-
-        Returns:
-            TextContent with formatted dead code analysis
-        """
-        # Check if the project language is Python
-        metadata = self.index.get("metadata", {})
-        language = metadata.get("language")
-
-        if language == "python":
-            return [TextContent(type="text", text="Tool is WIP")]
-
-        # Run analysis
-        analyzer = DeadCodeAnalyzer(self.index)
-        results = analyzer.analyze()
-
-        # Filter by confidence
-        results = filter_by_confidence(results, min_confidence)
-
-        # Format output
-        output = format_json(results) if output_format == "json" else format_markdown(results)
-
-        return [TextContent(type="text", text=output)]
 
     async def query(
         self,

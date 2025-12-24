@@ -99,7 +99,6 @@ Uses your editor's built-in MCP management to install CICADA.
 - `cicada watch` - Watch for file changes and automatically reindex
 - `cicada index` - Re-index code with custom options (`-f/--force` + --fast/--regular/--max, --watch)
 - `cicada index-pr` - Index pull requests for PR attribution
-- `cicada find-dead-code` - Find potentially unused functions
 - `cicada run [tool]` - Execute any of the 7 MCP tools directly from CLI
 - `cicada agents install` - Install Claude Code agents to `./.claude/` directory
 - `cicada link [parent_dir]` - Links current repository to an existing index
@@ -198,7 +197,6 @@ When watch mode is enabled:
 | `cicada watch` | Monitor files and auto-reindex on changes | During active development |
 | `cicada index --force --regular .` | Full rebuild w/ semantic keywords | After large refactors or enabling AI tier |
 | `cicada index-pr .` | Sync PR metadata/reviews | After new PRs merge |
-| `cicada find-dead-code --min-confidence high` | List unused public functions | Cleanup sprints |
 
 ### Troubleshooting
 
@@ -360,7 +358,6 @@ CICADA ships 7 focused MCP tools designed for efficient code exploration across 
 | View a module's complete API | `search_module` | Functions, signatures, specs, docs. Use `what_calls_it`/`what_it_calls` for bidirectional analysis |
 | Find where a function is used | `search_function` | Definition + all call sites. Supports wildcards (`*`) and OR (`\|`) patterns |
 | Track git history | `git_history` | Unified tool: blame, commits, PRs, function evolution (replaces 4 legacy tools) |
-| Find dead code | `find_dead_code` | Identify potentially unused functions with confidence levels |
 | Drill down into results | `expand_result` | Auto-expands modules or functions from query results |
 | Advanced index queries | `query_jq` | Custom jq queries for power users |
 
@@ -409,13 +406,6 @@ CICADA ships 7 focused MCP tools designed for efficient code exploration across 
 - Shows complete details with usage examples
 - Configure what to include: code, dependencies, callers
 - Convenient wrapper around search_module and search_function
-
-**`find_dead_code`** - Code cleanup analysis
-- Three confidence levels (high, medium, low)
-- Smart detection of callbacks and behaviors
-- Recognition of dynamic call patterns
-- Module-level grouping with line numbers
-- Excludes test files and `@impl` functions
 
 **`query_jq`** - Advanced index queries
 - Direct jq queries against the index

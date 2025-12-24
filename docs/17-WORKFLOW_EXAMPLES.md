@@ -121,7 +121,6 @@ Step 5: Check PR history for context
 
 ```
 Step 1: Find high-confidence dead code
-→ find_dead_code(min_confidence: "high")
    Found 8 functions:
    - App.Utils.legacy_format_date/1 (created 2 years ago)
    - App.Cache.clear_v1/0 (created 18 months ago)

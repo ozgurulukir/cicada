@@ -469,13 +469,6 @@ class ToolRouter:
             context_after,
         )
 
-    async def _handle_find_dead_code(self, arguments: dict) -> list[TextContent]:
-        """Handle find_dead_code tool call."""
-        return await self.analysis_handler.find_dead_code(
-            arguments.get("min_confidence", "high"),
-            arguments.get("format", "markdown"),
-        )
-
     async def _handle_query_jq(self, arguments: dict) -> list[TextContent]:
         """Handle query_jq tool call."""
         query = arguments.get("query")
@@ -643,8 +636,6 @@ class ToolRouter:
             return await self._handle_git_history(arguments)
         elif name == "query":
             return await self._handle_query(arguments)
-        elif name == "find_dead_code":
-            return await self._handle_find_dead_code(arguments)
         elif name == "query_jq":
             return await self._handle_query_jq(arguments)
         elif name == "expand_result":
