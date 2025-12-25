@@ -37,8 +37,8 @@ class DartSCIPIndexer(GenericSCIPIndexer):
 
     def _run_scip_indexer(self, repo_path: Path) -> Path:
         """Run scip_dart indexer."""
-        import subprocess
         import shutil
+        import subprocess
 
         # Check if dart and scip_dart are available
         dart_cmd = shutil.which("dart")
@@ -48,9 +48,7 @@ class DartSCIPIndexer(GenericSCIPIndexer):
             )
 
         if not shutil.which("scip_dart"):
-            raise RuntimeError(
-                "scip_dart not found. Install via: dart pub global activate scip"
-            )
+            raise RuntimeError("scip_dart not found. Install via: dart pub global activate scip")
 
         # Check if package_config.json exists, if not run dart pub get
         package_config = repo_path / ".dart_tool" / "package_config.json"

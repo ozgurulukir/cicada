@@ -61,13 +61,13 @@ uninstall: clean
 	@uv tool uninstall cicada-mcp 2>/dev/null || true
 	@echo "cicada uninstalled"
 
-# Generate SCIP protobuf files
+# Generate SCIP protobuf files (in cicada-scip package, not main cicada)
 generate-scip-proto:
-	@echo "Generating SCIP protobuf files..."
+	@echo "Generating SCIP protobuf files in cicada-scip package..."
 	@if command -v protoc >/dev/null 2>&1; then \
-		cd cicada/languages/scip && protoc -I. --python_out=. --pyi_out=. scip.proto && echo "✓ SCIP protobuf files generated (via protoc)"; \
+		cd packages/cicada-scip/src/cicada_scip && protoc -I. --python_out=. --pyi_out=. scip.proto && echo "✓ SCIP protobuf files generated (via protoc)"; \
 	else \
-		cd cicada/languages/scip && uvx --from grpcio-tools python -m grpc_tools.protoc -I. --python_out=. --pyi_out=. scip.proto && echo "✓ SCIP protobuf files generated (via grpcio-tools)"; \
+		cd packages/cicada-scip/src/cicada_scip && uvx --from grpcio-tools python -m grpc_tools.protoc -I. --python_out=. --pyi_out=. scip.proto && echo "✓ SCIP protobuf files generated (via grpcio-tools)"; \
 	fi
 
 # Setup test fixtures
@@ -209,7 +209,7 @@ clean:
 	@rm -rf venv   # legacy venv
 	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name "*.pyc" -delete
-	@rm -f cicada/languages/scip/scip_pb2.py cicada/languages/scip/scip_pb2.pyi
+	@rm -f packages/cicada-scip/src/cicada_scip/scip_pb2.py packages/cicada-scip/src/cicada_scip/scip_pb2.pyi
 	@echo "Cleaned up generated files"
 
 # Full reset: clean everything including cache, models, and cicada directories

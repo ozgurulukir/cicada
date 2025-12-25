@@ -1209,7 +1209,6 @@ def handle_install(args) -> None:
 
     from cicada.setup import EditorType, setup
     from cicada.utils import get_config_path, get_index_path
-    from cicada.interactive_setup_helpers import run_pr_indexing, add_to_claude_md
 
     # Determine and validate repository path
     repo_path = Path(args.repo).resolve() if args.repo else Path.cwd().resolve()
@@ -1295,7 +1294,7 @@ def handle_install(args) -> None:
                 default_index_prs=should_index_prs,
                 default_add_to_claude=should_add_to_claude,
             )
-            
+
             # Use interactive choices if not overridden by flags
             # (If we passed defaults, interactive_* vars will match defaults)
             should_index_prs = interactive_index_prs
@@ -1320,7 +1319,6 @@ def handle_install(args) -> None:
     except Exception as e:
         print(f"\nError: Setup failed: {e}", file=sys.stderr)
         sys.exit(1)
-
 
 
 def _validate_project_language(repo_path: Path) -> str:

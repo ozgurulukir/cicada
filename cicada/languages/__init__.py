@@ -219,7 +219,7 @@ class LanguageRegistry:
 
 # Register built-in languages
 
-# Register Elixir
+# Register Elixir (tree-sitter based - always available)
 LanguageRegistry.register_language(
     language="elixir",
     parser_class="cicada.languages.elixir.parser.ElixirParser",
@@ -228,43 +228,7 @@ LanguageRegistry.register_language(
     formatter_class="cicada.languages.elixir.formatter.ElixirFormatter",
 )
 
-# Register Python (SCIP-based)
-LanguageRegistry.register_language(
-    language="python",
-    parser_class=None,  # No parser needed for SCIP-based indexing
-    indexer_class="cicada.languages.python.indexer.PythonSCIPIndexer",
-    config=LanguageConfig.default_python(),
-    formatter_class="cicada.languages.scip.formatter.PythonFormatter",
-)
-
-# Register TypeScript (SCIP-based)
-LanguageRegistry.register_language(
-    language="typescript",
-    parser_class=None,  # No parser needed for SCIP-based indexing
-    indexer_class="cicada.languages.typescript.indexer.TypeScriptSCIPIndexer",
-    config=LanguageConfig.default_typescript(),
-    formatter_class="cicada.languages.scip.formatter.TypeScriptFormatter",
-)
-
-# Register JavaScript (SCIP-based, uses same tool as TypeScript)
-LanguageRegistry.register_language(
-    language="javascript",
-    parser_class=None,  # No parser needed for SCIP-based indexing
-    indexer_class="cicada.languages.typescript.indexer.JavaScriptSCIPIndexer",
-    config=LanguageConfig.default_javascript(),
-    formatter_class="cicada.languages.scip.formatter.JavaScriptFormatter",
-)
-
-# Register Rust (SCIP-based)
-LanguageRegistry.register_language(
-    language="rust",
-    parser_class=None,  # No parser needed for SCIP-based indexing
-    indexer_class="cicada.languages.rust.indexer.RustSCIPIndexer",
-    config=LanguageConfig.default_rust(),
-    formatter_class="cicada.languages.scip.formatter.RustFormatter",
-)
-
-# Register Erlang (tree-sitter based)
+# Register Erlang (tree-sitter based - always available)
 LanguageRegistry.register_language(
     language="erlang",
     parser_class="cicada.languages.erlang.parser.ErlangParser",
@@ -273,86 +237,126 @@ LanguageRegistry.register_language(
     formatter_class="cicada.languages.erlang.formatter.ErlangFormatter",
 )
 
-# Register Go (SCIP-based)
-LanguageRegistry.register_language(
-    language="go",
-    parser_class=None,
-    indexer_class="cicada.languages.go.indexer.GoSCIPIndexer",
-    config=LanguageConfig.default_go(),
-    formatter_class="cicada.languages.scip.formatter.GoFormatter",
-)
+# SCIP-based languages - only register if cicada_scip is available
+from cicada.languages.scip import SCIP_AVAILABLE
 
-# Register Java (SCIP-based)
-LanguageRegistry.register_language(
-    language="java",
-    parser_class=None,
-    indexer_class="cicada.languages.jvm.indexer.JavaSCIPIndexer",
-    config=LanguageConfig.default_java(),
-    formatter_class="cicada.languages.scip.formatter.JavaFormatter",
-)
+if SCIP_AVAILABLE:
+    # Register Python (SCIP-based)
+    LanguageRegistry.register_language(
+        language="python",
+        parser_class=None,
+        indexer_class="cicada.languages.python.indexer.PythonSCIPIndexer",
+        config=LanguageConfig.default_python(),
+        formatter_class="cicada.languages.scip.formatter.PythonFormatter",
+    )
 
-# Register Scala (SCIP-based)
-LanguageRegistry.register_language(
-    language="scala",
-    parser_class=None,
-    indexer_class="cicada.languages.jvm.indexer.ScalaSCIPIndexer",
-    config=LanguageConfig.default_scala(),
-    formatter_class="cicada.languages.scip.formatter.ScalaFormatter",
-)
+    # Register TypeScript (SCIP-based)
+    LanguageRegistry.register_language(
+        language="typescript",
+        parser_class=None,
+        indexer_class="cicada.languages.typescript.indexer.TypeScriptSCIPIndexer",
+        config=LanguageConfig.default_typescript(),
+        formatter_class="cicada.languages.scip.formatter.TypeScriptFormatter",
+    )
 
-# Register C (SCIP-based)
-LanguageRegistry.register_language(
-    language="c",
-    parser_class=None,
-    indexer_class="cicada.languages.clang.indexer.CSCIPIndexer",
-    config=LanguageConfig.default_c(),
-    formatter_class="cicada.languages.scip.formatter.CFormatter",
-)
+    # Register JavaScript (SCIP-based)
+    LanguageRegistry.register_language(
+        language="javascript",
+        parser_class=None,
+        indexer_class="cicada.languages.typescript.indexer.JavaScriptSCIPIndexer",
+        config=LanguageConfig.default_javascript(),
+        formatter_class="cicada.languages.scip.formatter.JavaScriptFormatter",
+    )
 
-# Register C++ (SCIP-based)
-LanguageRegistry.register_language(
-    language="cpp",
-    parser_class=None,
-    indexer_class="cicada.languages.clang.indexer.CppSCIPIndexer",
-    config=LanguageConfig.default_cpp(),
-    formatter_class="cicada.languages.scip.formatter.CppFormatter",
-)
+    # Register Rust (SCIP-based)
+    LanguageRegistry.register_language(
+        language="rust",
+        parser_class=None,
+        indexer_class="cicada.languages.rust.indexer.RustSCIPIndexer",
+        config=LanguageConfig.default_rust(),
+        formatter_class="cicada.languages.scip.formatter.RustFormatter",
+    )
 
-# Register Ruby (SCIP-based)
-LanguageRegistry.register_language(
-    language="ruby",
-    parser_class=None,
-    indexer_class="cicada.languages.ruby.indexer.RubySCIPIndexer",
-    config=LanguageConfig.default_ruby(),
-    formatter_class="cicada.languages.scip.formatter.RubyFormatter",
-)
+    # Register Go (SCIP-based)
+    LanguageRegistry.register_language(
+        language="go",
+        parser_class=None,
+        indexer_class="cicada.languages.go.indexer.GoSCIPIndexer",
+        config=LanguageConfig.default_go(),
+        formatter_class="cicada.languages.scip.formatter.GoFormatter",
+    )
 
-# Register C# (SCIP-based)
-LanguageRegistry.register_language(
-    language="csharp",
-    parser_class=None,
-    indexer_class="cicada.languages.dotnet.indexer.CSharpSCIPIndexer",
-    config=LanguageConfig.default_csharp(),
-    formatter_class="cicada.languages.scip.formatter.CSharpFormatter",
-)
+    # Register Java (SCIP-based)
+    LanguageRegistry.register_language(
+        language="java",
+        parser_class=None,
+        indexer_class="cicada.languages.jvm.indexer.JavaSCIPIndexer",
+        config=LanguageConfig.default_java(),
+        formatter_class="cicada.languages.scip.formatter.JavaFormatter",
+    )
 
-# Register Visual Basic (SCIP-based)
-LanguageRegistry.register_language(
-    language="vb",
-    parser_class=None,
-    indexer_class="cicada.languages.dotnet.indexer.VBSCIPIndexer",
-    config=LanguageConfig.default_vb(),
-    formatter_class="cicada.languages.scip.formatter.VBFormatter",
-)
+    # Register Scala (SCIP-based)
+    LanguageRegistry.register_language(
+        language="scala",
+        parser_class=None,
+        indexer_class="cicada.languages.jvm.indexer.ScalaSCIPIndexer",
+        config=LanguageConfig.default_scala(),
+        formatter_class="cicada.languages.scip.formatter.ScalaFormatter",
+    )
 
-# Register Dart (SCIP-based)
-LanguageRegistry.register_language(
-    language="dart",
-    parser_class=None,
-    indexer_class="cicada.languages.dart.indexer.DartSCIPIndexer",
-    config=LanguageConfig.default_dart(),
-    formatter_class="cicada.languages.scip.formatter.DartFormatter",
-)
+    # Register C (SCIP-based)
+    LanguageRegistry.register_language(
+        language="c",
+        parser_class=None,
+        indexer_class="cicada.languages.clang.indexer.CSCIPIndexer",
+        config=LanguageConfig.default_c(),
+        formatter_class="cicada.languages.scip.formatter.CFormatter",
+    )
+
+    # Register C++ (SCIP-based)
+    LanguageRegistry.register_language(
+        language="cpp",
+        parser_class=None,
+        indexer_class="cicada.languages.clang.indexer.CppSCIPIndexer",
+        config=LanguageConfig.default_cpp(),
+        formatter_class="cicada.languages.scip.formatter.CppFormatter",
+    )
+
+    # Register Ruby (SCIP-based)
+    LanguageRegistry.register_language(
+        language="ruby",
+        parser_class=None,
+        indexer_class="cicada.languages.ruby.indexer.RubySCIPIndexer",
+        config=LanguageConfig.default_ruby(),
+        formatter_class="cicada.languages.scip.formatter.RubyFormatter",
+    )
+
+    # Register C# (SCIP-based)
+    LanguageRegistry.register_language(
+        language="csharp",
+        parser_class=None,
+        indexer_class="cicada.languages.dotnet.indexer.CSharpSCIPIndexer",
+        config=LanguageConfig.default_csharp(),
+        formatter_class="cicada.languages.scip.formatter.CSharpFormatter",
+    )
+
+    # Register Visual Basic (SCIP-based)
+    LanguageRegistry.register_language(
+        language="vb",
+        parser_class=None,
+        indexer_class="cicada.languages.dotnet.indexer.VBSCIPIndexer",
+        config=LanguageConfig.default_vb(),
+        formatter_class="cicada.languages.scip.formatter.VBFormatter",
+    )
+
+    # Register Dart (SCIP-based)
+    LanguageRegistry.register_language(
+        language="dart",
+        parser_class=None,
+        indexer_class="cicada.languages.dart.indexer.DartSCIPIndexer",
+        config=LanguageConfig.default_dart(),
+        formatter_class="cicada.languages.scip.formatter.DartFormatter",
+    )
 
 
 # Global registry singleton

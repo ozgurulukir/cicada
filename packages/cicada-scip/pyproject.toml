@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cicada-scip"
+version = "0.1.0"
+description = "SCIP-based language indexing for Cicada"
+readme = "README.md"
+license = "MIT"
+authors = [
+    {name = "wende", email = "wende@hey.com"}
+]
+requires-python = ">=3.10"
+dependencies = [
+    "cicada-core>=0.1.0",
+    "protobuf>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cicada_scip"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/cicada_scip"]
+
+[tool.hatch.build]
+# Include protobuf generated files (excluded by root .gitignore)
+artifacts = ["src/cicada_scip/scip_pb2.py", "src/cicada_scip/scip_pb2.pyi"]

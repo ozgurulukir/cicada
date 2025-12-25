@@ -835,7 +835,6 @@ class FunctionSearchHandler:
         private_suggestion = self._suggest_private_function(results, parsed_patterns, cutoff_date)
 
         # Apply pagination (offset + head_limit)
-        total_results = len(results)
         if offset > 0:
             results = results[offset:]
         if head_limit is not None and head_limit > 0:

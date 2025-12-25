@@ -80,8 +80,8 @@ tests/fixtures/**/uv.lock
 tests/fixtures/**/node_modules/
 
 # Auto-generated protobuf files (generated before tests/builds, not tracked in git)
-*_pb2.py
-*_pb2.pyi
+packages/cicada-scip/src/cicada_scip/*_pb2.py
+packages/cicada-scip/src/cicada_scip/*_pb2.pyi
 
 # Link directory
 link/
