@@ -52,7 +52,7 @@ jobs:
 
       - name: Generate SCIP protobuf files
         run: |
-          cd cicada/languages/scip
+          cd packages/cicada-scip/src/cicada_scip
           protoc --python_out=. --pyi_out=. scip.proto
 
       - name: Install Cicada with SCIP support
