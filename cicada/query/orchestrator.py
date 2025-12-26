@@ -812,13 +812,19 @@ class QueryOrchestrator:
                 # Compact: just list keywords with source indicators
                 self._append_keyword_list(lines, result)
 
-        # Code snippet preview (if enabled)
+        # Code snippet preview
         if show_snippets:
+            # Full context when show_snippets is enabled
             snippet = self._extract_code_snippet(
                 result.file, result.line, context_lines, context_before, context_after
             )
             if snippet:
                 lines.append(f"\n```\n{snippet}\n```\n")
+        else:
+            # Always show at least the matching line (like -C 0)
+            single_line = self._extract_code_snippet(result.file, result.line, 0, 0, 0)
+            if single_line:
+                lines.append(f"   {single_line}\n")
 
         lines.append("\n")  # Blank line between results
 
