@@ -292,21 +292,20 @@ class GenericSCIPIndexer(BaseIndexer):
                 for kw in name_keywords:
                     name_keywords[kw] = int(name_keywords[kw] * 1.5) or 1
 
-                # Extract keywords from function names
+                # Extract keywords from function names and docs
                 functions = module_data.get("functions", [])
                 for func in functions:
                     if not isinstance(func, dict):
                         continue
                     func_name = func.get("name", "")
+                    func_keywords: dict[str, float] = {}
+
                     if func_name:
                         # Split function name into words
                         func_text = re.sub(r"([a-z])([A-Z])", r"\1 \2", func_name)
                         func_text = func_text.replace("_", " ").lower()
                         func_result = keyword_extractor.extract_keywords(func_text, top_n=5)
                         func_keywords = dict(func_result.get("top_keywords", []))
-                        # Merge with name keywords
-                        for kw, score in func_keywords.items():
-                            name_keywords[kw] = name_keywords.get(kw, 0) + score
 
                     # Extract from function doc if available
                     func_doc = func.get("doc", "")
@@ -314,7 +313,15 @@ class GenericSCIPIndexer(BaseIndexer):
                         doc_result = keyword_extractor.extract_keywords(func_doc, top_n=10)
                         doc_keywords = dict(doc_result.get("top_keywords", []))
                         for kw, score in doc_keywords.items():
-                            name_keywords[kw] = name_keywords.get(kw, 0) + score
+                            func_keywords[kw] = func_keywords.get(kw, 0) + score
+
+                    # Store keywords on the function itself
+                    if func_keywords:
+                        func["keywords"] = func_keywords
+
+                    # Also merge into module keywords
+                    for kw, score in func_keywords.items():
+                        name_keywords[kw] = name_keywords.get(kw, 0) + score
 
                 # Extract from module doc if available
                 module_doc = module_data.get("moduledoc", "") or module_data.get("doc", "")
