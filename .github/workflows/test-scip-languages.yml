@@ -41,7 +41,7 @@ jobs:
           # Check if SCIP core code changed (run all languages)
           if echo "$CHANGED_FILES" | grep -qE '^packages/cicada-scip/|^tests/docker/|^\.github/workflows/test-scip-languages\.yml'; then
             echo "SCIP core code changed - testing all languages"
-            echo 'languages=["go", "java", "scala", "ruby", "dart", "c", "cpp", "csharp", "vb"]' >> $GITHUB_OUTPUT
+            echo 'languages=["go", "java", "scala", "ruby", "dart", "c", "cpp", "csharp", "vb", "python", "typescript", "javascript", "rust"]' >> $GITHUB_OUTPUT
           else
             # Check which specific fixtures changed
             LANGS='['
@@ -54,6 +54,10 @@ jobs:
             if echo "$CHANGED_FILES" | grep -q '^tests/fixtures/sample_cpp/'; then LANGS+='"cpp",'; fi
             if echo "$CHANGED_FILES" | grep -q '^tests/fixtures/sample_csharp/'; then LANGS+='"csharp",'; fi
             if echo "$CHANGED_FILES" | grep -q '^tests/fixtures/sample_vb/'; then LANGS+='"vb",'; fi
+            if echo "$CHANGED_FILES" | grep -q '^tests/fixtures/sample_python/'; then LANGS+='"python",'; fi
+            if echo "$CHANGED_FILES" | grep -q '^tests/fixtures/sample_typescript/'; then LANGS+='"typescript",'; fi
+            if echo "$CHANGED_FILES" | grep -q '^tests/fixtures/sample_javascript/'; then LANGS+='"javascript",'; fi
+            if echo "$CHANGED_FILES" | grep -q '^tests/fixtures/sample_rust/'; then LANGS+='"rust",'; fi
             LANGS=${LANGS%,}']'
 
             if [ "$LANGS" = "]" ]; then
@@ -93,6 +97,14 @@ jobs:
             fixture: sample_csharp
           - language: vb
             fixture: sample_vb
+          - language: python
+            fixture: sample_python
+          - language: typescript
+            fixture: sample_typescript
+          - language: javascript
+            fixture: sample_javascript
+          - language: rust
+            fixture: sample_rust
 
     steps:
       - uses: actions/checkout@v4
@@ -101,6 +113,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -183,6 +200,36 @@ jobs:
           export PATH="$HOME/.dotnet:$PATH"
           dotnet tool install --global scip-dotnet
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
+      - name: Install Python indexer
+        if: matrix.language == 'python'
+        run: |
+          npm install -g @sourcegraph/scip-python
+          cd tests/fixtures/sample_python
+          scip-python index .
+
+      - name: Install TypeScript/JavaScript indexer
+        if: matrix.language == 'typescript' || matrix.language == 'javascript'
+        run: |
+          npm install -g @sourcegraph/scip-typescript
+          if [ "${{ matrix.language }}" = "typescript" ]; then
+            cd tests/fixtures/sample_typescript
+            npm install --silent
+            scip-typescript index .
+          else
+            cd tests/fixtures/sample_javascript
+            scip-typescript index .
+          fi
+
+      - name: Install Rust indexer
+        if: matrix.language == 'rust'
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source "$HOME/.cargo/env"
+          rustup component add rust-analyzer
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          cd tests/fixtures/sample_rust
+          rust-analyzer scip . --output index.scip
 
       - name: Test indexing
         run: |
