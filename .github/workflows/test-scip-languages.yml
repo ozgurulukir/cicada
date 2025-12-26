@@ -45,9 +45,6 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Install Cicada with SCIP support
-        run: uv sync --extra scip
-
       - name: Install protobuf compiler
         run: |
           sudo apt-get update
@@ -57,6 +54,9 @@ jobs:
         run: |
           cd cicada/languages/scip
           protoc --python_out=. --pyi_out=. scip.proto
+
+      - name: Install Cicada with SCIP support
+        run: uv sync --extra scip
 
       # Language-specific indexer installation
       - name: Install Go indexer
