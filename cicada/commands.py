@@ -1279,11 +1279,7 @@ def handle_install(args) -> None:
 
     # If only model flags provided (no editor), prompt for editor
     if editor is None:
-        if yes_mode:
-            # Default to Claude Code if --yes used without editor
-            editor = "claude"
-        else:
-            editor = _prompt_for_editor()
+        editor = "claude" if yes_mode else _prompt_for_editor()
 
     # If only editor flag provided (no model), prompt for model (unless index exists)
     if extraction_method is None and not index_exists:

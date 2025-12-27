@@ -97,11 +97,11 @@ class RustSignatureExtractor(FunctionSignatureExtractor):
         signatures = set()
 
         # Track current impl block context
-        current_impl_type = None
+        current_impl_type: str | None = None
         lines = content.split("\n")
         impl_depth = 0
 
-        for i, line in enumerate(lines):
+        for _i, line in enumerate(lines):
             # Check for impl block start
             impl_match = RUST_IMPL_PATTERN.match(line)
             if impl_match:

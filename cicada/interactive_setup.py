@@ -15,20 +15,17 @@ from cicada.format import BOLD, GREY, PRIMARY, RESET, SELECTED, generate_gradien
 from cicada.interactive_setup_helpers import (
     CLAUDE_MD_ITEMS,
     EDITOR_ITEMS,
-    EDITOR_MAP_TEXT,
     PR_ITEMS,
     TIER_ITEMS,
     TIER_MAP,
     TIER_MAP_TEXT,
     UnsupportedProjectError,
-    add_to_claude_md,
     check_elixir_project,
     display_claude_md_selection,
     display_editor_selection,
     display_pr_indexing_selection,
     display_tier_selection,
     get_existing_config,
-    run_pr_indexing,
     run_setup,
 )
 
