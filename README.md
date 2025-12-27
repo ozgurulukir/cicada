@@ -94,6 +94,7 @@ Uses your editor's built-in MCP management to install CICADA.
 **Available commands after installation:**
 - `cicada [claude|cursor|vs|gemini|codex|opencode|zed]` - One-command interactive setup per project
 - `cicada-mcp` - MCP server (auto-started by editor)
+- `cicada serve` - Start REST API server for HTTP access to all MCP tools
 - `cicada status` - Show index status, PR index, link status, agent files, MCP configs
 - `cicada stats [repo]` - Display usage statistics (tool calls, tokens, execution times)
 - `cicada watch` - Watch for file changes and automatically reindex

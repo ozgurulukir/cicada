@@ -42,6 +42,7 @@ KNOWN_SUBCOMMANDS: tuple[str, ...] = (
     "unlink",
     "agents",
     "run",
+    "serve",
 )
 KNOWN_SUBCOMMANDS_SET = frozenset(KNOWN_SUBCOMMANDS)
 
@@ -605,6 +606,44 @@ Examples:
 
     register_tool_subparsers(run_subparsers, get_tool_definitions())
 
+    # Serve command - REST API server
+    serve_parser = subparsers.add_parser(
+        "serve",
+        help="Start REST API server for MCP tools",
+        description="Start a REST API server that exposes all Cicada MCP tools as HTTP endpoints",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        parents=[common_parser],
+        epilog="""
+Examples:
+  cicada serve                        # Start server on default port 8000
+  cicada serve --port 3000            # Start server on custom port
+  cicada serve --host 127.0.0.1       # Bind to localhost only
+  cicada serve /path/to/repo          # Serve specific repository
+
+The server will be available at:
+  - API endpoints: http://localhost:8000/api/
+  - Documentation: http://localhost:8000/docs
+  - Health check: http://localhost:8000/health
+        """,
+    )
+    serve_parser.add_argument(
+        "repo",
+        nargs="?",
+        default=".",
+        help="Path to the repository (default: current directory)",
+    )
+    serve_parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="Host to bind to (default: 0.0.0.0)",
+    )
+    serve_parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to listen on (default: 8000)",
+    )
+
     return parser
 
 
@@ -637,6 +676,7 @@ def handle_command(args) -> bool:
         "unlink": handle_unlink,
         "agents": handle_agents,
         "run": handle_run,
+        "serve": handle_serve,
     }
 
     if args.command is None:
@@ -1663,4 +1703,26 @@ def handle_run(args) -> None:
 
         print(f"Error: {e}", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
+        sys.exit(1)
+
+
+def handle_serve(args) -> None:
+    """Start REST API server for MCP tools.
+
+    Args:
+        args: Parsed command-line arguments
+    """
+    from cicada.rest_server import run_server
+
+    repo_path = Path(args.repo).resolve() if args.repo else Path.cwd().resolve()
+    host = args.host
+    port = args.port
+
+    try:
+        run_server(host=host, port=port, repo_path=str(repo_path))
+    except KeyboardInterrupt:
+        print("\n\nServer stopped by user.")
+        sys.exit(0)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
