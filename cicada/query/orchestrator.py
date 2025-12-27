@@ -30,14 +30,23 @@ from cicada.utils.path_utils import matches_glob_pattern
 class QueryOrchestrator:
     """Intelligent orchestrator for broad code discovery."""
 
-    def __init__(self, index: dict[str, Any]):
+    def __init__(
+        self,
+        index: dict[str, Any],
+        repo_path: str | None = None,
+        use_embeddings: bool = False,
+    ):
         """
         Initialize the query orchestrator.
 
         Args:
             index: The Cicada index dictionary containing modules and metadata
+            repo_path: Optional repository path for embeddings search
+            use_embeddings: Whether to use embeddings-based semantic search
         """
         self.index = index
+        self.repo_path = repo_path
+        self.use_embeddings = use_embeddings
         # Will create keyword searcher on demand with appropriate match_source
 
     def _is_recent(self, result: SearchResult, cutoff: datetime) -> bool:
@@ -381,7 +390,7 @@ class QueryOrchestrator:
         """
         results: list[SearchResult] = []
 
-        # Keyword search
+        # Keyword search (always run when requested)
         if strategy.use_keyword_search:
             searcher = KeywordSearcher(self.index, match_source=match_source)
             keyword_results = searcher.search(
@@ -392,6 +401,28 @@ class QueryOrchestrator:
             # Convert dict results to SearchResult objects
             for result in keyword_results:
                 results.append(self._dict_to_search_result(result))
+
+        # Embeddings-based semantic search (hybrid: merges with keyword results)
+        if self.use_embeddings and strategy.use_keyword_search and self.repo_path:
+            try:
+                from cicada.embeddings.searcher import EmbeddingsSearcher
+
+                embeddings_searcher = EmbeddingsSearcher(self.repo_path)
+                # Combine keywords into a query string
+                query_str = " ".join(
+                    str(k) if isinstance(k, str) else " ".join(k) for k in strategy.search_keywords
+                )
+                embedding_results = embeddings_searcher.search(
+                    query=query_str,
+                    top_n=QueryConfig.INTERNAL_SEARCH_LIMIT,
+                    filter_type=filter_type,
+                )
+                semantic_results = [self._dict_to_search_result(r) for r in embedding_results]
+                # Hybrid merge with percentile ranking and boost
+                results = self._merge_hybrid_results(results, semantic_results)
+            except FileNotFoundError:
+                # Embeddings not available, continue with keyword results only
+                pass
 
         # Pattern search
         if strategy.use_pattern_search:
@@ -421,7 +452,94 @@ class QueryOrchestrator:
             signature=result_dict.get("signature"),
             visibility=result_dict.get("visibility"),
             last_modified_at=result_dict.get("last_modified_at"),
+            search_source=result_dict.get("search_source", "keyword"),
         )
+
+    def _merge_hybrid_results(
+        self,
+        keyword_results: list[SearchResult],
+        semantic_results: list[SearchResult],
+    ) -> list[SearchResult]:
+        """
+        Merge keyword and semantic search results for hybrid search.
+
+        Uses percentile ranking for score normalization and applies a 1.5x boost
+        to results appearing in both search sources.
+
+        Args:
+            keyword_results: Results from keyword search
+            semantic_results: Results from semantic/embeddings search
+
+        Returns:
+            Merged and ranked results with search_source indicators
+        """
+        # Handle edge cases
+        if not keyword_results and not semantic_results:
+            return []
+        if not semantic_results:
+            for r in keyword_results:
+                r.search_source = "keyword"
+            return keyword_results
+        if not keyword_results:
+            for r in semantic_results:
+                r.search_source = "semantic"
+            return semantic_results
+
+        # Convert to percentile ranks (0-100)
+        keyword_ranked = self._to_percentile_ranks(keyword_results, "keyword")
+        semantic_ranked = self._to_percentile_ranks(semantic_results, "semantic")
+
+        # Build lookup by unique key (name+file+line)
+        merged: dict[tuple[str, str, int], SearchResult] = {}
+
+        # Add keyword results first
+        for r in keyword_ranked:
+            key = (r.name, r.file, r.line)
+            merged[key] = r
+
+        # Merge semantic results, boosting duplicates
+        for r in semantic_ranked:
+            key = (r.name, r.file, r.line)
+            if key in merged:
+                # Found in both - apply 1.5x boost, mark as "both"
+                existing = merged[key]
+                existing.confidence = min(100.0, existing.confidence * 1.5)
+                existing.search_source = "both"
+            else:
+                merged[key] = r
+
+        # Update score field with normalized confidence so _rank_and_dedupe
+        # and other downstream consumers use the hybrid-weighted ranking
+        for r in merged.values():
+            r.score = r.confidence
+
+        # Sort by confidence descending
+        return sorted(merged.values(), key=lambda r: r.confidence, reverse=True)
+
+    def _to_percentile_ranks(self, results: list[SearchResult], source: str) -> list[SearchResult]:
+        """
+        Convert raw scores to percentile ranks (0-100).
+
+        Args:
+            results: List of search results with raw scores
+            source: Search source to set ("keyword" or "semantic")
+
+        Returns:
+            Same results with confidence set to percentile rank
+        """
+        if not results:
+            return []
+
+        # Sort by score ascending for percentile calculation
+        sorted_results = sorted(results, key=lambda r: r.score)
+        n = len(sorted_results)
+
+        for i, r in enumerate(sorted_results):
+            # Percentile: position / total * 100
+            r.confidence = ((i + 1) / n) * 100
+            r.search_source = source  # type: ignore[assignment]
+
+        return sorted_results
 
     def _apply_filters(
         self, results: list[SearchResult], config: FilterConfig
@@ -630,6 +748,7 @@ class QueryOrchestrator:
         context_before: int | None = None,
         context_after: int | None = None,
         fallback_note: str | None = None,
+        pr_results: list[Any] | None = None,
         zero_result_hints: list[str] | None = None,
     ) -> str:
         """
@@ -647,12 +766,14 @@ class QueryOrchestrator:
             context_before: Override for lines before match (like -B)
             context_after: Override for lines after match (like -A)
             fallback_note: Note explaining what fallback was applied (if any)
+            pr_results: Optional list of PR search results (semantic)
             zero_result_hints: Hints for zero results (shown inline without header)
 
         Returns:
             Markdown formatted report
         """
         lines = []
+        pr_results = pr_results or []
 
         # Apply offset and limit pagination
         paginated_results = results[offset : offset + max_results]
@@ -691,6 +812,20 @@ class QueryOrchestrator:
                     result, i, show_snippets, verbose, context_lines, context_before, context_after
                 )
             )
+
+        # Related PRs (from semantic search)
+        if pr_results:
+            lines.append("\n## Related PRs (semantic)\n\n")
+            for pr in pr_results:
+                state_icon = "✓" if pr.state == "merged" else "○" if pr.state == "open" else "×"
+                lines.append(f"- {state_icon} **PR #{pr.pr_number}**: {pr.title}\n")
+                if verbose and pr.author:
+                    lines.append(f"  by {pr.author}")
+                    if pr.merged_at:
+                        lines.append(" (merged)")
+                    elif pr.state:
+                        lines.append(f" ({pr.state})")
+                    lines.append("\n")
 
         # Zero-result hints (inline, no header)
         if zero_result_hints:
@@ -759,8 +894,13 @@ class QueryOrchestrator:
         """
         lines = []
 
-        # Compact header: number, name, and confidence on first line
+        # Compact header: number, name, source indicator, and confidence on first line
+        source_indicators = {"keyword": "(k)", "semantic": "(s)", "both": "(k+s)"}
+        source_indicator = source_indicators.get(result.search_source, "")
+
         header_parts = [f"{index}. {result.name}"]
+        if source_indicator:
+            header_parts[0] += f" {source_indicator}"
 
         # Add confidence % by default, include tier label in verbose mode
         if result.percentile is not None:
@@ -1018,6 +1158,30 @@ class QueryOrchestrator:
 
         return related[:max_terms]
 
+    def _search_prs_semantically(
+        self, query: str | list[str | list[str]], max_results: int = 5
+    ) -> list[Any]:
+        """
+        Search PRs semantically using embeddings.
+
+        Args:
+            query: Query string or list
+            max_results: Maximum number of PR results
+
+        Returns:
+            List of PRSearchResult objects
+        """
+        if not self.repo_path:
+            return []
+
+        try:
+            from cicada.embeddings.searcher import search_prs_semantically
+
+            query_str = self._normalize_query_text(query)
+            return search_prs_semantically(self.repo_path, query_str, top_n=max_results)
+        except Exception:
+            return []
+
     def _generate_zero_result_suggestions(
         self, query: str | list[str | list[str]], filters_applied: dict[str, Any]
     ) -> list[str]:
@@ -1174,6 +1338,11 @@ class QueryOrchestrator:
             # Generate normal suggestions based on results
             suggestions = self._generate_suggestions(query, ranked_results)
 
+        # Search PRs semantically if embeddings mode is enabled
+        pr_results = []
+        if self.use_embeddings and self.repo_path:
+            pr_results = self._search_prs_semantically(query)
+
         # Format report with offset and context_lines
         return self._format_report(
             ranked_results,
@@ -1187,5 +1356,6 @@ class QueryOrchestrator:
             options.context_before,
             options.context_after,
             fallback_note,
+            pr_results,
             zero_result_hints,
         )

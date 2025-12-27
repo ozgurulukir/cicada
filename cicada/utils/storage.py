@@ -137,6 +137,23 @@ def get_pr_index_path(repo_path: str | Path) -> Path:
     return storage_dir / "pr_index.json"
 
 
+def get_embeddings_path(repo_path: str | Path) -> Path:
+    """
+    Get the path to the embeddings store for a repository.
+
+    If the repository is linked, returns the path to the source repository's embeddings.
+    Note: cicada-vector stores embeddings in 'vectors.jsonl', not 'embeddings.jsonl'.
+
+    Args:
+        repo_path: Path to the repository
+
+    Returns:
+        Path to the vectors.jsonl file (cicada-vector's storage format)
+    """
+    storage_dir = resolve_storage_dir(repo_path)
+    return storage_dir / "vectors.jsonl"
+
+
 def get_link_path(repo_path: str | Path) -> Path:
     """
     Get the path to the link file for a repository.

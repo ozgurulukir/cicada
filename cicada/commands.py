@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from cicada.index_mode import (
+    INDEX_MODE_EMBEDDINGS,
     determine_indexing_mode,
     mode_flag_specified,
     validate_mode_flags,
@@ -110,7 +111,7 @@ def _add_indexing_mode_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--embeddings",
         action="store_true",
-        help="Embeddings-based indexing (not implemented yet)",
+        help="Embeddings-based indexing with semantic search",
     )
 
 
@@ -856,6 +857,32 @@ def handle_index_main(args) -> None:
             verbose=verbose,
         )
 
+        # If embeddings mode, generate embeddings after the regular index
+        if indexing_mode == INDEX_MODE_EMBEDDINGS:
+            import json
+
+            from cicada.embeddings.indexer import EmbeddingsIndexer
+
+            if verbose:
+                print("\nGenerating embeddings for semantic search...")
+
+            # Load the index we just created
+            with open(index_path) as f:
+                index_data = json.load(f)
+
+            try:
+                embeddings_indexer = EmbeddingsIndexer(
+                    repo_path, verbose=verbose, force=force_enabled
+                )
+                embeddings_indexer.index_from_parsed_data(index_data)
+
+                if verbose:
+                    print("Embeddings generated successfully.")
+            except Exception as e:
+                print(f"\n⚠️  Failed to generate embeddings: {e}")
+                print("The code index was created successfully.")
+                print("To retry embeddings, run: cicada index --force --embeddings")
+
     except KeyboardInterrupt:
         print("\n\n⚠️  Indexing interrupted by user.")
         # Handle interrupt during the initial, non-enrichment phase of indexing.
@@ -914,7 +941,7 @@ def _print_mode_requirement_error() -> None:
         file=sys.stderr,
     )
     print(
-        "  cicada index --force --embeddings  Embeddings-based indexing (not implemented yet)",
+        "  cicada index --force --embeddings  Embeddings-based indexing with semantic search",
         file=sys.stderr,
     )
     print("\nRun 'cicada index --help' for more information.", file=sys.stderr)
@@ -953,18 +980,39 @@ def handle_watch(args):
 
 def handle_index_pr(args):
     from cicada.github.pr_indexer import PRIndexer
-    from cicada.utils import get_pr_index_path
+    from cicada.index_mode import INDEX_MODE_EMBEDDINGS
+    from cicada.utils import get_config_path, get_pr_index_path
     from cicada.version_check import check_for_updates
 
     check_for_updates()
 
     try:
+        repo_path = Path(args.repo).resolve()
         output_path = str(get_pr_index_path(args.repo))
 
         indexer = PRIndexer(repo_path=args.repo)
-        indexer.index_repository(output_path=output_path, incremental=not args.clean)
+        pr_index = indexer.index_repository(output_path=output_path, incremental=not args.clean)
 
         print("\n✅ Indexing complete! You can now use the MCP tools for PR history lookups.")
+
+        # Check if we should generate PR embeddings (embeddings mode enabled)
+        config_path = get_config_path(repo_path)
+        if config_path.exists():
+            indexing_mode = _load_existing_config(config_path)
+            if indexing_mode == INDEX_MODE_EMBEDDINGS and pr_index:
+                print("\nGenerating PR embeddings for semantic search...")
+                try:
+                    from cicada.embeddings.indexer import EmbeddingsIndexer
+
+                    embeddings_indexer = EmbeddingsIndexer(
+                        repo_path, verbose=True, force=args.clean
+                    )
+                    embeddings_indexer.index_prs_from_pr_index(pr_index)
+                    print("PR embeddings generated successfully.")
+                except Exception as e:
+                    print(f"\n⚠️  Failed to generate PR embeddings: {e}")
+                    print("The PR index was created successfully.")
+                    print("To retry PR embeddings, run: cicada index-pr --clean")
 
     except KeyboardInterrupt:
         print("\n\n⚠️  Indexing interrupted by user.")
@@ -1246,6 +1294,7 @@ def handle_install(args) -> None:
     # If skip_optional, defaults to False
     should_index_prs = None
     should_add_to_claude = None
+    embeddings_config = None
 
     if force_index_prs:
         should_index_prs = True
@@ -1287,6 +1336,7 @@ def handle_install(args) -> None:
                 indexing_mode,
                 interactive_index_prs,
                 interactive_add_claude,
+                interactive_embeddings_config,
             ) = show_first_time_setup(
                 default_index_prs=should_index_prs,
                 default_add_to_claude=should_add_to_claude,
@@ -1296,6 +1346,7 @@ def handle_install(args) -> None:
             # (If we passed defaults, interactive_* vars will match defaults)
             should_index_prs = interactive_index_prs
             should_add_to_claude = interactive_add_claude
+            embeddings_config = interactive_embeddings_config
 
     # If index exists but no mode flags, use existing settings
     if not mode_flag_specified(args) and index_exists:
@@ -1311,6 +1362,7 @@ def handle_install(args) -> None:
             index_exists=index_exists,
             index_prs=should_index_prs or False,
             add_to_claude_md=should_add_to_claude or False,
+            embeddings_config=embeddings_config,
         )
     except Exception as e:
         print(f"\nError: Setup failed: {e}", file=sys.stderr)
