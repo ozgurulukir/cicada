@@ -44,8 +44,21 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Install protobuf compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Generate SCIP protobuf files
+        run: |
+          cd packages/cicada-scip/src/cicada_scip
+          protoc --python_out=. --pyi_out=. scip.proto
+          ls -la scip_pb2.py scip_pb2.pyi
+
       - name: Install dependencies
-        run: uv sync --all-extras
+        run: |
+          # Install with scip extra to ensure workspace packages are built
+          uv sync --extra scip --extra dev
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
