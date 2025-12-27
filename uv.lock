@@ -211,7 +211,7 @@ provides-extras = ["yaml", "dev"]
 
 [[package]]
 name = "cicada-mcp"
-version = "0.6.0rc0"
+version = "0.6.0rc1"
 source = { editable = "." }
 dependencies = [
     { name = "cicada-core" },
