@@ -30,6 +30,7 @@ KNOWN_SUBCOMMANDS: tuple[str, ...] = (
     "vs",
     "gemini",
     "codex",
+    "zed",
     "watch",
     "index",
     "index-pr",
@@ -139,6 +140,11 @@ def _add_editor_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Skip editor selection, use Codex",
     )
+    parser.add_argument(
+        "--zed",
+        action="store_true",
+        help="Skip editor selection, use Zed",
+    )
 
 
 def _create_editor_subparser(
@@ -151,6 +157,7 @@ def _create_editor_subparser(
         "vs": "VS Code",
         "gemini": "Gemini CLI",
         "codex": "Codex",
+        "zed": "Zed",
     }
     display_name = editor_display_names.get(name, name.title())
     parser = subparsers.add_parser(
@@ -249,7 +256,7 @@ def get_argument_parser():
     )
 
     # Editor-specific subparsers (all have identical structure with tier args)
-    for editor in ["claude", "cursor", "vs", "gemini", "codex"]:
+    for editor in ["claude", "cursor", "vs", "gemini", "codex", "zed"]:
         _create_editor_subparser(subparsers, editor, common_parser)
 
     watch_parser = subparsers.add_parser(
@@ -618,6 +625,7 @@ def handle_command(args) -> bool:
         "vs": lambda args: handle_editor_setup(args, "vs"),
         "gemini": lambda args: handle_editor_setup(args, "gemini"),
         "codex": lambda args: handle_editor_setup(args, "codex"),
+        "zed": lambda args: handle_editor_setup(args, "zed"),
         "watch": handle_watch,
         "index": handle_index,
         "index-pr": handle_index_pr,
@@ -1209,7 +1217,6 @@ def handle_install(args) -> None:
 
     from cicada.setup import EditorType, setup
     from cicada.utils import get_config_path, get_index_path
-    from cicada.interactive_setup_helpers import run_pr_indexing, add_to_claude_md
 
     # Determine and validate repository path
     repo_path = Path(args.repo).resolve() if args.repo else Path.cwd().resolve()
@@ -1295,7 +1302,7 @@ def handle_install(args) -> None:
                 default_index_prs=should_index_prs,
                 default_add_to_claude=should_add_to_claude,
             )
-            
+
             # Use interactive choices if not overridden by flags
             # (If we passed defaults, interactive_* vars will match defaults)
             should_index_prs = interactive_index_prs
@@ -1320,7 +1327,6 @@ def handle_install(args) -> None:
     except Exception as e:
         print(f"\nError: Setup failed: {e}", file=sys.stderr)
         sys.exit(1)
-
 
 
 def _validate_project_language(repo_path: Path) -> str:
@@ -1356,7 +1362,7 @@ def _determine_editor_from_args(args) -> str | None:
     Raises:
         SystemExit: If multiple editor flags specified
     """
-    editor_flags = [args.claude, args.cursor, args.vs, args.gemini, args.codex]
+    editor_flags = [args.claude, args.cursor, args.vs, args.gemini, args.codex, args.zed]
     editor_count = sum(editor_flags)
 
     if editor_count > 1:
@@ -1373,6 +1379,8 @@ def _determine_editor_from_args(args) -> str | None:
         return "gemini"
     if args.codex:
         return "codex"
+    if args.zed:
+        return "zed"
     return None
 
 
@@ -1395,6 +1403,7 @@ def _prompt_for_editor() -> str:
         "VS Code (Visual Studio Code)",
         "Gemini CLI (Google Gemini command line interface)",
         "Codex (AI code editor)",
+        "Zed (High-performance code editor)",
     ]
     editor_menu = TerminalMenu(editor_options, title="Choose your editor:")
     menu_idx = editor_menu.show()
@@ -1405,7 +1414,14 @@ def _prompt_for_editor() -> str:
 
     # Map menu index to editor type
     assert isinstance(menu_idx, int), "menu_idx must be an integer"
-    editor_map: tuple[str, str, str, str, str] = ("claude", "cursor", "vs", "gemini", "codex")
+    editor_map: tuple[str, str, str, str, str, str] = (
+        "claude",
+        "cursor",
+        "vs",
+        "gemini",
+        "codex",
+        "zed",
+    )
     return editor_map[menu_idx]
 
 
@@ -1522,6 +1538,8 @@ def _configure_editors_if_requested(args, repo_path: Path, storage_dir: Path) ->
         editors_to_configure.append("gemini")
     if args.codex:
         editors_to_configure.append("codex")
+    if args.zed:
+        editors_to_configure.append("zed")
 
     if editors_to_configure:
         try:

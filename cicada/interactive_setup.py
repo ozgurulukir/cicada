@@ -230,7 +230,9 @@ def show_first_time_setup(
     else:
         print(f"{BOLD}Step 2/3: Index pull requests?{RESET}")
         print(f"{PRIMARY}   PR indexing enables fast offline lookup of GitHub PRs{RESET}")
-        print(f"{PRIMARY}   Useful for: finding which PR introduced code, viewing PR context{RESET}")
+        print(
+            f"{PRIMARY}   Useful for: finding which PR introduced code, viewing PR context{RESET}"
+        )
         print()
 
         pr_index = _select_with_menu(

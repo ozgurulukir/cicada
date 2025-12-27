@@ -23,7 +23,7 @@ from cicada.utils import (
     get_index_path,
 )
 
-EditorType = Literal["claude", "cursor", "vs", "gemini", "codex", "opencode"]
+EditorType = Literal["claude", "cursor", "vs", "gemini", "codex", "opencode", "zed"]
 
 
 def detect_project_language(repo_path: Path) -> str:
@@ -247,6 +247,11 @@ def get_mcp_config_for_editor(
             "config_path": repo_path / ".mcp.json",
             "config_key": "mcpServers",
             "needs_dir": False,
+        },
+        "zed": {
+            "config_path": repo_path / ".zed" / "settings.json",
+            "config_key": "context_servers",
+            "needs_dir": True,
         },
     }
 
@@ -678,6 +683,7 @@ def setup(
         # Import locally to avoid circular dependencies
         try:
             from cicada.interactive_setup_helpers import run_pr_indexing
+
             run_pr_indexing(repo_path)
         except ImportError:
             # Fallback if module structure is different than expected
@@ -688,6 +694,7 @@ def setup(
         # Import locally to avoid circular dependencies
         try:
             from cicada.interactive_setup_helpers import add_to_claude_md as doc_add_to_claude_md
+
             doc_add_to_claude_md(repo_path)
         except ImportError:
             print("Warning: Could not import add_to_claude_md")

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+**Zed Editor Support**
+- Added `cicada zed` command for one-command setup with Zed editor
+- Configuration file created at `.zed/settings.json` with `context_servers` key
+- Zed now appears in editor selection menu for `cicada install`
+- Full support for all keyword extraction tiers (--fast, --regular, --max)
+
 **TypeScript Language Support (#138, #156, #181)**
 - Full TypeScript code indexing via SCIP (Source Code Intelligence Protocol)
 - TypeScript-specific formatter with `()` notation (e.g., `Container.add()`)

@@ -3,18 +3,17 @@ Comprehensive tests for cicada/setup.py
 """
 
 import json
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import MagicMock, mock_open, patch
+
+import pytest
+
 from cicada.setup import (
-    get_mcp_config_for_editor,
     create_config_yaml,
+    get_mcp_config_for_editor,
     index_repository,
     setup,
 )
-
-
-
 
 
 class TestGetMcpConfigForEditor:
@@ -111,6 +110,20 @@ class TestGetMcpConfigForEditor:
         assert "cicada" in config["mcpServers"]
 
         server_config = config["mcpServers"]["cicada"]
+        assert "command" in server_config
+        assert "env" in server_config
+        assert server_config["env"]["CICADA_CONFIG_DIR"] == str(mock_storage_dir)
+
+    def test_zed_config_structure(self, mock_repo, mock_storage_dir):
+        """Zed config should have correct structure"""
+        with patch("shutil.which", return_value="cicada-server"):
+            config_path, config = get_mcp_config_for_editor("zed", mock_repo, mock_storage_dir)
+
+        assert config_path == mock_repo / ".zed" / "settings.json"
+        assert "context_servers" in config  # Zed uses context_servers key
+        assert "cicada" in config["context_servers"]
+
+        server_config = config["context_servers"]["cicada"]
         assert "command" in server_config
         assert "env" in server_config
         assert server_config["env"]["CICADA_CONFIG_DIR"] == str(mock_storage_dir)
@@ -463,9 +476,8 @@ class TestMainFunction:
         """Main should only accept valid editor choices"""
         from cicada.setup import main
 
-        with patch("sys.argv", ["cicada", "invalid_editor"]):
-            with pytest.raises(SystemExit):
-                main()
+        with patch("sys.argv", ["cicada", "invalid_editor"]), pytest.raises(SystemExit):
+            main()
 
 
 class TestErrorHandling:
