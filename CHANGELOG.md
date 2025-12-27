@@ -9,6 +9,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+**Embeddings Database Support for Fully Semantic Searching (#219)**
+- New `cicada/embeddings` package with indexer, searcher, and text builder
+- `--embeddings` flag for `cicada index` command to enable semantic search
+- Interactive Ollama configuration during setup for embeddings mode
+- Hybrid search combining keyword and embeddings results with 1.5x overlap boost
+- Percentile-based score normalization for fair keyword/semantic ranking
+- Semantic search for PRs based on title and description
+- PR embeddings automatically generated during `cicada index-pr` in embeddings mode
+- Search source indicators: (k) keyword, (s) semantic, (k+s) both
+- Watch mode embeddings regeneration on file changes
+- Storage at `~/.cicada/projects/<repo_hash>/vectors.jsonl` (cicada-vector format)
+- Force flag support to clear existing embeddings before reindexing
+- Graceful error handling for embeddings generation failures and Ollama connection issues
+
+**11 New SCIP Language Support**
+- Full SCIP-based indexing for Go (scip-go), Java/Kotlin/Scala (scip-java), C/C++ (scip-clang), Ruby (scip-ruby), C#/Visual Basic (scip-dotnet), Dart (scip-dart), PHP (scip-php)
+- Each language includes indexer, formatter, language config, and test fixtures
+- Total supported languages: 17 (6 original + 11 new SCIP languages)
+- Config-driven SCIP indexer approach for consistent behavior
+- Language detection via marker files (go.mod, pom.xml, CMakeLists.txt, etc.)
+- Automatic dependency installation (dart pub get, coursier for JVM)
+- Docker e2e tests for all SCIP languages
+
+**Rust Language Support**
+- Full Rust code indexing via rust-analyzer SCIP
+- Rust project detection via Cargo.toml
+- Rust-specific formatting with arity notation (`Calculator.add/1`)
+- Proper handling of impl blocks to associate methods with parent types
+- Rust signature extractor for function-level co-change analysis
+- Fixed impl method association and name extraction
+
+**JavaScript Language Support (#216)**
+- Full JavaScript code indexing via SCIP (shares TypeScript infrastructure)
+- Automatic language detection via `package.json` without `tsconfig.json`
+- Auto-generation of `jsconfig.json` for JavaScript projects without config
+- JavaScript-specific formatter for consistent output
+- Enrichment pipeline support for function-level keywords
+
 **TypeScript Language Support (#138, #156, #181)**
 - Full TypeScript code indexing via SCIP (Source Code Intelligence Protocol)
 - TypeScript-specific formatter with `()` notation (e.g., `Container.add()`)
@@ -69,8 +107,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Grepifying Cicada (#215)**
 - Enhanced grep-like functionality across search tools
 
+**Monorepo Package Split**
+- Extracted `cicada-core` and `cicada-scip` into separate packages under `packages/`
+- SCIP support now optional - tree-sitter languages (Elixir, Erlang) work without cicada-scip
+- SCIP languages (Python, TypeScript, Go, Rust, etc.) require cicada-scip
+- Add `SCIP_AVAILABLE` flag to conditionally register SCIP languages
+- Independent package testing and versioning
+
+**Smart Search Fallbacks**
+- Automatic fallback searches when initial search fails
+- Query fallbacks: match_source broadening (strings→all), scope broadening (public→all), recent filter removal
+- Function fallbacks: CamelSnakeFallback (getUserName↔get_user_name), PrefixWildcardFallback (authenticate→*authenticate*)
+- Module qualifier removal and arity constraint relaxation
+- Clear messaging showing which fallback was used
+
+**Query Display Improvements**
+- Always show matching line in query results
+- Enhanced result formatting with better spacing
+- Installation instructions when SCIP indexer not found
+- More compact and scannable search results
+
 **CLI Improvements**
 - `make pr-comments` now accepts optional PR number argument
+
+### Changed
+
+**Simplified Keyword Extraction**
+- Removed tier system (--fast/--regular/--max flags)
+- Simplified keyword expansion to use lemminflect only
+- More consistent and predictable keyword extraction behavior
+
+**SCIP Architecture**
+- Consolidated SCIP language indexers into config-driven approach
+- Enrichment pipeline support extended to all SCIP-based languages
+- Improved code organization with centralized language registry
+
+### Removed
+
+**Removed find_dead_code Tool**
+- Unreliable dead code detection tool removed
+- MCP tool definition and handler removed
+- CLI command `cicada find-dead-code` removed
+- Dead code module kept for potential future library use
+
+**Removed Dependencies**
+- KeyBERT extractor and related tests
+- GloVe/FastText embedding models
+- ML optional dependencies (replaced by simpler embeddings approach)
 
 ### Fixed
 
@@ -98,9 +181,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enabled string keyword extraction by default
 - Fixed related terms suggestions
 
+**CI/Test Improvements**
+- Optimized SCIP CI: run all languages on core changes, specific language on fixture changes
+- Added Python, TypeScript, JavaScript, and Rust to SCIP CI tests
+- Generate compile_commands.json with absolute paths for C/C++ CI tests
+- Fixed Python test to use --no-project to avoid venv in fixture dir
+- Fixed CI change detection to use full git history for PR diffs
+- Install indexers directly instead of Docker for faster CI
+- Generate protobuf files in correct cicada-scip package location
+- Optimized JS integration tests with shared fixture
+- Fixed make install to include cicada-scip package
+
 ### Dependencies
 
-- Added `pathspec` dependency for glob pattern matching
+- **Added:** `cicada-vector` for embeddings database support
+- **Removed:** `keybert`, `sentence-transformers`, GloVe/FastText models (ML dependencies)
+- Updated: `pathspec` for glob pattern matching
 
 ## [0.5.2] - 2025-11-30
 

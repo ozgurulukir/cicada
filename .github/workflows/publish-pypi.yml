@@ -119,14 +119,29 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for branch checking
 
-      - name: Verify tag is on main branch
+      - name: Verify tag branch requirements
         run: |
-          git fetch origin main
-          if ! git merge-base --is-ancestor HEAD origin/main; then
-            echo "Error: Tag must be on main branch for PyPI release"
-            exit 1
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          echo "Tag: $TAG_NAME"
+
+          # RC releases can be from dev or main branch
+          if [[ "$TAG_NAME" == *"-rc"* ]]; then
+            git fetch origin dev main
+            if git merge-base --is-ancestor HEAD origin/dev || git merge-base --is-ancestor HEAD origin/main; then
+              echo "✓ RC release allowed from dev or main branch"
+            else
+              echo "Error: Tag must be on dev or main branch"
+              exit 1
+            fi
+          else
+            # Stable releases must be on main branch only
+            git fetch origin main
+            if ! git merge-base --is-ancestor HEAD origin/main; then
+              echo "Error: Stable release tag must be on main branch (use -rc suffix for dev branch releases)"
+              exit 1
+            fi
+            echo "✓ Stable release on main branch"
           fi
-          echo "✓ Tag is on main branch"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -178,14 +193,29 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for branch checking
 
-      - name: Verify tag is on main branch
+      - name: Verify tag branch requirements
         run: |
-          git fetch origin main
-          if ! git merge-base --is-ancestor HEAD origin/main; then
-            echo "Error: Tag must be on main branch for PyPI release"
-            exit 1
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          echo "Tag: $TAG_NAME"
+
+          # RC releases can be from dev or main branch
+          if [[ "$TAG_NAME" == *"-rc"* ]]; then
+            git fetch origin dev main
+            if git merge-base --is-ancestor HEAD origin/dev || git merge-base --is-ancestor HEAD origin/main; then
+              echo "✓ RC release allowed from dev or main branch"
+            else
+              echo "Error: Tag must be on dev or main branch"
+              exit 1
+            fi
+          else
+            # Stable releases must be on main branch only
+            git fetch origin main
+            if ! git merge-base --is-ancestor HEAD origin/main; then
+              echo "Error: Stable release tag must be on main branch (use -rc suffix for dev branch releases)"
+              exit 1
+            fi
+            echo "✓ Stable release on main branch"
           fi
-          echo "✓ Tag is on main branch"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
