@@ -5,13 +5,23 @@
 ## Language Support
 1. Elixir Support - Full AST-level indexing with module, function, and macro extraction
 2. Python Support - SCIP-based indexing with class and method detection
-3. Erlang Support - Beta support for Erlang codebases
-4. TypeScript Support - Experimental support via SCIP
+3. Erlang Support - Tree-sitter based parsing with EDoc extraction
+4. TypeScript Support - SCIP-based indexing via TypeScript compiler
+5. JavaScript Support - SCIP-based indexing for JS projects
+6. Rust Support - SCIP-based indexing via rust-analyzer
+7. Go Support - SCIP-based indexing via gopls
+8. Java Support - SCIP-based indexing for JVM projects
+9. Scala Support - SCIP-based indexing via Metals
+10. C/C++ Support - SCIP-based indexing via clangd
+11. Ruby Support - SCIP-based indexing
+12. C# Support - SCIP-based indexing for .NET projects
+13. Visual Basic Support - SCIP-based indexing for .NET projects
+14. Dart Support - SCIP-based indexing
 
 ## Code Indexing
 1. [AST-Level Indexing](AST_INDEXING.md) - Extracts module, function, and class definitions with signatures and specs - 
 2. [Incremental Indexing](INCREMENTAL_INDEXING.md) - Only reindexes changed files for fast updates
-3. Automatic Language Detection - Detects project type from mix.exs or pyproject.toml
+3. [Automatic Language Detection](AUTOMATIC_LANGUAGE_DETECTION.md) - Detects project type from mix.exs or pyproject.toml
 4. Watch Mode - Automatically reindexes files when changes are detected
 5. Configurable Keyword Tiers - Fast, Regular, or Max tiers for keyword extraction quality
 6. String-Based Indexing - Indexes string literals from function bodies (SQL, error messages, etc.)
