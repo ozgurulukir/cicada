@@ -33,21 +33,8 @@
 4. [Match Source Filtering](KEYWORD_SEARCH.md#match-source-filtering) - Search in docs, strings, or comments separately
 5. Filtering - Filter by public/private visibility, file path using glob patterns, code recency 
 
-## Module Analysis
-1. Complete API View - View all functions with arity, signatures, docs, and typespecs
-2. What Calls It - See all modules and functions that depend on a module
-3. What It Calls - See all dependencies a module imports, aliases, or uses
-4. Transitive Dependencies - Explore dependencies at configurable depth levels
-5. Wildcard Module Search - Search modules using patterns like `MyApp.*`
-6. Python Class Display - View classes with method counts and signatures
-
-## Function Analysis
-1. Function Definition Search - Find function definitions by name or pattern
-2. Call Site Tracking - See all locations where a function is called
-3. Usage Examples - Get actual code snippets showing how functions are used
-4. Bidirectional Analysis - See both callers and callees for any function
-5. Arity Filtering - Filter functions by specific arity
-6. Changed Since Filter - Filter functions changed after a specific date
+## Code Analysis
+1. [Code Analysis](CODE_ANALYSIS.md) - Module and function analysis with dependency tracking and call site discovery
 
 ## Git History & Attribution
 1. Line Blame - Find who wrote a specific line and in which PR
