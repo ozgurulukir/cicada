@@ -19,6 +19,16 @@
 14. Visual Basic Support - SCIP-based indexing for .NET projects
 15. Dart Support - SCIP-based indexing
 
+## MCP Tools
+1. [MCP Tools Reference](MCP_TOOLS.md) - Comprehensive guide to all MCP tools
+2. query - Smart code discovery with keyword/pattern auto-detection
+3. search_module - View complete module API with dependency analysis
+4. search_function - Find function definitions and all call sites
+5. git_history - Unified tool for all git history queries
+6. expand_result - Drill down into query results for complete details
+7. refresh_index - Force refresh the index to pick up recent changes
+8. query_jq - Execute custom jq queries against the index
+
 ## Code Indexing
 1. [AST-Level Indexing](AST_INDEXING.md) - Extracts module, function, and class definitions with signatures and specs
 2. [Incremental Indexing](INCREMENTAL_INDEXING.md) - Only reindexes changed files for fast updates (includes Watch Mode)
@@ -77,15 +87,6 @@
 7. Clean Command - Remove Cicada configuration and indexes
 8. Run Command - Execute MCP tools directly from command line
 9. Serve Command - Start REST API server for HTTP access to tools
-
-## MCP Tools
-1. query - Smart code discovery with keyword/pattern auto-detection
-2. search_module - View complete module API with dependency analysis
-3. search_function - Find function definitions and all call sites
-4. git_history - Unified tool for all git history queries
-5. expand_result - Drill down into query results for complete details
-6. refresh_index - Force refresh the index to pick up recent changes
-7. query_jq - Execute custom jq queries against the index
 
 ## Output & Token Optimization
 1. Compact Output - Token-efficient responses with essential info only
