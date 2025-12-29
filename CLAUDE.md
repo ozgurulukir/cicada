@@ -99,3 +99,50 @@ For detailed information on specific topics, see:
 
 
 - after successful commit always push
+
+## Task Management with Codebook
+
+Use `codebook task` CLI for documentation-driven development and task tracking.
+
+### Core Commands
+
+```bash
+# Create task from modified documentation
+codebook task new "Feature Name" ./docs
+
+# List all tasks
+codebook task list
+
+# Update task with new diffs
+codebook task update
+
+# Delete task
+codebook task delete "Feature Name"
+
+# View task statistics
+codebook task stats
+```
+
+### Mark Files as Reviewed
+
+Use `codebook task mark-reviewed` to track which files have been reviewed as part of a task. This updates the task's YAML frontmatter with the file path and git SHA.
+
+```bash
+codebook task mark-reviewed src/main.py           # Uses HEAD SHA
+codebook task mark-reviewed src/main.py:abc123    # Specific SHA
+codebook task mark-reviewed src/main.py --task ./tasks/MY_TASK.md
+```
+
+**When to use:**
+- After reviewing code changes related to a task
+- To track coverage of which files have been verified against documentation
+- Before closing a task to ensure all relevant files were reviewed
+
+This creates entries in the task frontmatter:
+```yaml
+---
+reviewed:
+  - src/main.py:abc123def456
+  - src/utils.py:789012xyz
+---
+```
