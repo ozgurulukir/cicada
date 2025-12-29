@@ -22,7 +22,7 @@
 1. [AST-Level Indexing](AST_INDEXING.md) - Extracts module, function, and class definitions with signatures and specs
 2. [Incremental Indexing](INCREMENTAL_INDEXING.md) - Only reindexes changed files for fast updates (includes Watch Mode)
 3. [Automatic Language Detection](AUTOMATIC_LANGUAGE_DETECTION.md) - Detects project type from mix.exs or pyproject.toml
-4. Keyword-Based Indexing - Keyword extraction from module names, function names, parameter names, docstrings, strings and inline comments
+4. [Keyword-Based Indexing](KEYWORD_INDEXING.md) - Keyword extraction from module names, function names, parameter names, docstrings, strings and inline comments
 5. [String-Based Indexing](STRING_INDEXING.md) - Indexes string literals from function bodies (SQL, error messages, etc.)
 
 ## Semantic Search
@@ -30,9 +30,7 @@
 2. [Pattern Search](KEYWORD_SEARCH.md#wildcard-patterns) - Find code using wildcards (*) and OR patterns (|)
 3. [Mixed Queries](KEYWORD_SEARCH.md#synonym-groups) - Combine keywords and patterns in a single search
 4. [Match Source Filtering](KEYWORD_SEARCH.md#match-source-filtering) - Search in docs, strings, or comments separately
-5. Scope Filtering - Filter by public/private visibility
-6. Path Filtering - Filter results by file path using glob patterns
-7. Recent Changes Filter - Filter to code changed in the last 14 days
+5. Filtering - Filter by public/private visibility, file path using glob patterns, code recency 
 
 ## Module Analysis
 1. Complete API View - View all functions with arity, signatures, docs, and typespecs
