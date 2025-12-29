@@ -437,11 +437,13 @@ class ModuleFormatter:
         # Compact function format - one entry per unique name/arity
         functions = [
             {
+                "name": name,
+                "arity": arity,
                 "signature": SignatureBuilder.build(clauses[0]),
                 "line": clauses[0]["line"],
                 "type": clauses[0]["type"],
             }
-            for (_, _), clauses in sorted(grouped.items())
+            for (name, arity), clauses in sorted(grouped.items())
         ]
 
         # Calculate function counts if not provided
@@ -469,6 +471,10 @@ class ModuleFormatter:
         # Include detailed dependencies if provided
         if detailed_dependencies:
             result["dependencies"] = detailed_dependencies
+
+        # Add co-change files if present
+        if data.get("cochange_files"):
+            result["cochange_files"] = data["cochange_files"]
 
         return json.dumps(result, indent=2)
 
@@ -1129,6 +1135,10 @@ class ModuleFormatter:
             # Add guards if present
             if result["function"].get("guards"):
                 func_entry["guards"] = result["function"]["guards"]
+
+            # Add co-change files if present (from module-level data)
+            if result.get("cochange_files"):
+                func_entry["cochange_files"] = result["cochange_files"]
 
             formatted_results.append(func_entry)
 

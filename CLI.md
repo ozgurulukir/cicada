@@ -93,7 +93,83 @@ cicada server --embeddings        # Embeddings mode (not implemented yet)
 - Server mode is SILENT (no prompts, uses defaults)
 - Install mode is INTERACTIVE (prompts for choices)
 
-### 4. Editor Shortcut Commands (Current Behavior)
+### 4. Serve Subcommand (REST API Server)
+
+```bash
+cicada serve [path]
+
+# Examples:
+cicada serve                        # Start REST API on default port 8000
+cicada serve --port 3000            # Start server on custom port
+cicada serve --host 127.0.0.1       # Bind to localhost only
+cicada serve /path/to/repo          # Serve specific repository
+```
+
+**Behavior:**
+- Starts a REST API server that exposes all Cicada MCP tools as HTTP endpoints
+- Automatically loads the indexed repository
+- Provides OpenAPI documentation at `/docs`
+- Health check endpoint at `/health`
+- All 7 MCP tools available at `/api/<tool-name>`
+
+**Available Endpoints:**
+- `POST /api/query` - Search for code by keywords or patterns
+- `POST /api/search-module` - View a module's complete API and dependencies
+- `POST /api/search-function` - Find function definitions and call sites
+- `POST /api/git-history` - Get git history for files, lines, or functions
+- `POST /api/expand-result` - Expand a query result to see complete details
+- `POST /api/refresh-index` - Force refresh the code index
+- `POST /api/query-jq` - Execute jq queries against the index
+- `GET /api/tools` - List all available tools
+- `GET /health` - Health check endpoint
+
+**Response Formats:**
+All endpoints support both markdown and JSON output formats:
+- Default: `"format": "markdown"` - Returns markdown text in the `data` field
+- JSON: `"format": "json"` - Returns structured JSON object in the `data` field
+
+Example JSON request:
+```json
+{
+  "query": "authentication",
+  "format": "json"
+}
+```
+
+Example JSON response:
+```json
+{
+  "success": true,
+  "data": {
+    "content": "...",
+    "format": "markdown",
+    "note": "Content is markdown text. Native JSON format coming in future release."
+  },
+  "format": "json",
+  "error": null
+}
+```
+
+**Options:**
+```bash
+cicada serve --host 0.0.0.0         # Bind to all interfaces (default)
+cicada serve --port 8000            # Port to listen on (default: 8000)
+cicada serve /path/to/repo          # Repository path (default: current directory)
+```
+
+**Use Cases:**
+- Integrate Cicada with web applications
+- Build custom dashboards or UIs
+- Automate code analysis workflows
+- Create API clients in any language
+- Test and explore MCP tools via HTTP
+
+**API Documentation:**
+- Interactive API docs: `http://localhost:8000/docs`
+- OpenAPI/Swagger UI for testing endpoints
+- Full request/response schema documentation
+
+### 5. Editor Shortcut Commands (Current Behavior)
 
 ```bash
 cicada claude [path]

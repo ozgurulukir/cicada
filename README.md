@@ -62,8 +62,8 @@ Instead of raw text dumps, CICADA gives your AI **structured, pre-indexed knowle
 # curl -LsSf https://astral.sh/uv/install.sh | sh
 uv tool install cicada-mcp
 
-# In your repo 
-cicada claude   # or: cicada cursor, cicada vs, cicada gemini, cicada codex, cicada opencode
+# In your repo
+cicada claude   # or: cicada cursor, cicada vs, cicada gemini, cicada codex, cicada opencode, cicada zed
 ```
 
 <div align="left">
@@ -92,8 +92,9 @@ Uses your editor's built-in MCP management to install CICADA.
 </div>
 
 **Available commands after installation:**
-- `cicada [claude|cursor|vs|gemini|codex|opencode]` - One-command interactive setup per project
+- `cicada [claude|cursor|vs|gemini|codex|opencode|zed]` - One-command interactive setup per project
 - `cicada-mcp` - MCP server (auto-started by editor)
+- `cicada serve` - Start REST API server for HTTP access to all MCP tools
 - `cicada status` - Show index status, PR index, link status, agent files, MCP configs
 - `cicada stats [repo]` - Display usage statistics (tool calls, tokens, execution times)
 - `cicada watch` - Watch for file changes and automatically reindex
@@ -146,7 +147,7 @@ Ask your assistant:
 
 ```bash
 cd /path/to/project
-cicada claude   # or cicada cursor / cicada vs / cicada gemini / cicada codex / cicada opencode
+cicada claude   # or cicada cursor / cicada vs / cicada gemini / cicada codex / cicada opencode / cicada zed
 ```
 
 ### Enable PR Attribution (optional)

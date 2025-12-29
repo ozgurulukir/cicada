@@ -31,6 +31,7 @@ KNOWN_SUBCOMMANDS: tuple[str, ...] = (
     "vs",
     "gemini",
     "codex",
+    "zed",
     "watch",
     "index",
     "index-pr",
@@ -42,6 +43,7 @@ KNOWN_SUBCOMMANDS: tuple[str, ...] = (
     "unlink",
     "agents",
     "run",
+    "serve",
 )
 KNOWN_SUBCOMMANDS_SET = frozenset(KNOWN_SUBCOMMANDS)
 
@@ -142,6 +144,11 @@ def _add_editor_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Skip editor selection, use Codex",
     )
+    parser.add_argument(
+        "--zed",
+        action="store_true",
+        help="Skip editor selection, use Zed",
+    )
 
 
 def _create_editor_subparser(
@@ -154,6 +161,7 @@ def _create_editor_subparser(
         "vs": "VS Code",
         "gemini": "Gemini CLI",
         "codex": "Codex",
+        "zed": "Zed",
     }
     display_name = editor_display_names.get(name, name.title())
     parser = subparsers.add_parser(
@@ -252,7 +260,7 @@ def get_argument_parser():
     )
 
     # Editor-specific subparsers (all have identical structure with mode args)
-    for editor in ["claude", "cursor", "vs", "gemini", "codex"]:
+    for editor in ["claude", "cursor", "vs", "gemini", "codex", "zed"]:
         _create_editor_subparser(subparsers, editor, common_parser)
 
     watch_parser = subparsers.add_parser(
@@ -601,6 +609,44 @@ Examples:
 
     register_tool_subparsers(run_subparsers, get_tool_definitions())
 
+    # Serve command - REST API server
+    serve_parser = subparsers.add_parser(
+        "serve",
+        help="Start REST API server for MCP tools",
+        description="Start a REST API server that exposes all Cicada MCP tools as HTTP endpoints",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        parents=[common_parser],
+        epilog="""
+Examples:
+  cicada serve                        # Start server on default port 8000
+  cicada serve --port 3000            # Start server on custom port
+  cicada serve --host 127.0.0.1       # Bind to localhost only
+  cicada serve /path/to/repo          # Serve specific repository
+
+The server will be available at:
+  - API endpoints: http://localhost:8000/api/
+  - Documentation: http://localhost:8000/docs
+  - Health check: http://localhost:8000/health
+        """,
+    )
+    serve_parser.add_argument(
+        "repo",
+        nargs="?",
+        default=".",
+        help="Path to the repository (default: current directory)",
+    )
+    serve_parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="Host to bind to (default: 0.0.0.0)",
+    )
+    serve_parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to listen on (default: 8000)",
+    )
+
     return parser
 
 
@@ -621,6 +667,7 @@ def handle_command(args) -> bool:
         "vs": lambda args: handle_editor_setup(args, "vs"),
         "gemini": lambda args: handle_editor_setup(args, "gemini"),
         "codex": lambda args: handle_editor_setup(args, "codex"),
+        "zed": lambda args: handle_editor_setup(args, "zed"),
         "watch": handle_watch,
         "index": handle_index,
         "index-pr": handle_index_pr,
@@ -632,6 +679,7 @@ def handle_command(args) -> bool:
         "unlink": handle_unlink,
         "agents": handle_agents,
         "run": handle_run,
+        "serve": handle_serve,
     }
 
     if args.command is None:
@@ -1402,7 +1450,7 @@ def _determine_editor_from_args(args) -> str | None:
     Raises:
         SystemExit: If multiple editor flags specified
     """
-    editor_flags = [args.claude, args.cursor, args.vs, args.gemini, args.codex]
+    editor_flags = [args.claude, args.cursor, args.vs, args.gemini, args.codex, args.zed]
     editor_count = sum(editor_flags)
 
     if editor_count > 1:
@@ -1419,6 +1467,8 @@ def _determine_editor_from_args(args) -> str | None:
         return "gemini"
     if args.codex:
         return "codex"
+    if args.zed:
+        return "zed"
     return None
 
 
@@ -1441,6 +1491,7 @@ def _prompt_for_editor() -> str:
         "VS Code (Visual Studio Code)",
         "Gemini CLI (Google Gemini command line interface)",
         "Codex (AI code editor)",
+        "Zed (High-performance code editor)",
     ]
     editor_menu = TerminalMenu(editor_options, title="Choose your editor:")
     menu_idx = editor_menu.show()
@@ -1451,7 +1502,14 @@ def _prompt_for_editor() -> str:
 
     # Map menu index to editor type
     assert isinstance(menu_idx, int), "menu_idx must be an integer"
-    editor_map: tuple[str, str, str, str, str] = ("claude", "cursor", "vs", "gemini", "codex")
+    editor_map: tuple[str, str, str, str, str, str] = (
+        "claude",
+        "cursor",
+        "vs",
+        "gemini",
+        "codex",
+        "zed",
+    )
     return editor_map[menu_idx]
 
 
@@ -1565,6 +1623,8 @@ def _configure_editors_if_requested(args, repo_path: Path, storage_dir: Path) ->
         editors_to_configure.append("gemini")
     if args.codex:
         editors_to_configure.append("codex")
+    if args.zed:
+        editors_to_configure.append("zed")
 
     if editors_to_configure:
         try:
@@ -1697,4 +1757,26 @@ def handle_run(args) -> None:
 
         print(f"Error: {e}", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
+        sys.exit(1)
+
+
+def handle_serve(args) -> None:
+    """Start REST API server for MCP tools.
+
+    Args:
+        args: Parsed command-line arguments
+    """
+    from cicada.rest_server import run_server
+
+    repo_path = Path(args.repo).resolve() if args.repo else Path.cwd().resolve()
+    host = args.host
+    port = args.port
+
+    try:
+        run_server(host=host, port=port, repo_path=str(repo_path))
+    except KeyboardInterrupt:
+        print("\n\nServer stopped by user.")
+        sys.exit(0)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

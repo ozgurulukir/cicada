@@ -23,7 +23,7 @@ from cicada.utils import (
     get_index_path,
 )
 
-EditorType = Literal["claude", "cursor", "vs", "gemini", "codex", "opencode"]
+EditorType = Literal["claude", "cursor", "vs", "gemini", "codex", "opencode", "zed"]
 
 
 def detect_project_language(repo_path: Path) -> str:
@@ -288,6 +288,11 @@ def get_mcp_config_for_editor(
             "config_path": repo_path / ".mcp.json",
             "config_key": "mcpServers",
             "needs_dir": False,
+        },
+        "zed": {
+            "config_path": repo_path / ".zed" / "settings.json",
+            "config_key": "context_servers",
+            "needs_dir": True,
         },
     }
 

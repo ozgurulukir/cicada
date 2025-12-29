@@ -42,6 +42,7 @@ def test_install_yes_flag(mock_setup, mock_detect_language, mock_mode_flags, moc
     args.vs = False
     args.gemini = False
     args.codex = False
+    args.zed = False
     args.index_prs = False
     args.no_index_prs = False
     args.skip_optional = False
@@ -70,6 +71,7 @@ def test_install_index_prs_flag(
     args.vs = False
     args.gemini = False
     args.codex = False
+    args.zed = False
     args.index_prs = True
     args.no_index_prs = False
     args.skip_optional = False
@@ -93,6 +95,7 @@ def test_install_skip_optional_flag(
     args.vs = False
     args.gemini = False
     args.codex = False
+    args.zed = False
     args.index_prs = False
     args.no_index_prs = False
     args.skip_optional = True
