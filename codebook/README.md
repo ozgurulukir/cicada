@@ -3,20 +3,21 @@
 **CICADA** - Code Intelligence: Contextual Analysis, Discovery, and Attribution
 
 ## Language Support
-1. Elixir Support - Full AST-level indexing with module, function, and macro extraction
-2. Python Support - SCIP-based indexing with class and method detection
-3. Erlang Support - Tree-sitter based parsing with EDoc extraction
-4. TypeScript Support - SCIP-based indexing via TypeScript compiler
-5. JavaScript Support - SCIP-based indexing for JS projects
-6. Rust Support - SCIP-based indexing via rust-analyzer
-7. Go Support - SCIP-based indexing via gopls
-8. Java Support - SCIP-based indexing for JVM projects
-9. Scala Support - SCIP-based indexing via Metals
-10. C/C++ Support - SCIP-based indexing via clangd
-11. Ruby Support - SCIP-based indexing
-12. C# Support - SCIP-based indexing for .NET projects
-13. Visual Basic Support - SCIP-based indexing for .NET projects
-14. Dart Support - SCIP-based indexing
+1. [Language Support](LANGUAGE_SUPPORT.md) - Comprehensive guide to all 14 supported languages
+2. Elixir Support - Full AST-level indexing with module, function, and macro extraction
+3. Python Support - SCIP-based indexing with class and method detection
+4. Erlang Support - Tree-sitter based parsing with EDoc extraction
+5. TypeScript Support - SCIP-based indexing via TypeScript compiler
+6. JavaScript Support - SCIP-based indexing for JS projects
+7. Rust Support - SCIP-based indexing via rust-analyzer
+8. Go Support - SCIP-based indexing via gopls
+9. Java Support - SCIP-based indexing for JVM projects
+10. Scala Support - SCIP-based indexing via Metals
+11. C/C++ Support - SCIP-based indexing via clangd
+12. Ruby Support - SCIP-based indexing
+13. C# Support - SCIP-based indexing for .NET projects
+14. Visual Basic Support - SCIP-based indexing for .NET projects
+15. Dart Support - SCIP-based indexing
 
 ## Code Indexing
 1. [AST-Level Indexing](AST_INDEXING.md) - Extracts module, function, and class definitions with signatures and specs
