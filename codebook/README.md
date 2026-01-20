@@ -2,12 +2,6 @@
 
 **CICADA** - Code Intelligence: Contextual Analysis, Discovery, and Attribution
 
-## Getting Started
-1. [Installation](INSTALLATION.md) - Step-by-step setup for all supported editors
-2. [Workflows](WORKFLOWS.md) - Real-world examples of chaining tools together
-3. [Architecture](ARCHITECTURE.md) - Design decisions and system overview
-4. [Performance](PERFORMANCE.md) - Optimization tips and performance characteristics
-
 ## Language Support
 1. [Language Support](LANGUAGE_SUPPORT.md) - Comprehensive guide to all 14 supported languages
 2. Elixir Support - Full AST-level indexing with module, function, and macro extraction
@@ -86,7 +80,7 @@
 3. Search Score Boosting - Boost search results based on co-change relationships
 4. Adaptive Commit Analysis - Automatically adjusts analysis depth by repo size
 
-## Editor Integration
+## AI Agent Integration
 1. Claude Code Setup - One-command setup for Claude Code editor
 2. Cursor Setup - One-command setup for Cursor editor
 3. VS Code Setup - One-command setup for VS Code editor
@@ -95,13 +89,6 @@
 6. Zed Setup - One-command setup for Zed editor
 7. MCP Server - Model Context Protocol server for AI assistants
 
-## Output & Token Optimization
-1. Compact Output - Token-efficient responses with essential info only
-2. Verbose Mode - Enable full documentation, specs, and examples
-3. Code Snippets - Optional code context around results
-4. Pagination - Limit and offset for large result sets
-5. Automatic Truncation - Large results are automatically truncated
-
 ## Advanced Features
 1. jq Query Support - Execute arbitrary jq queries against the index
 2. Schema Discovery - Discover available index fields with `| schema`
@@ -109,10 +96,3 @@
 4. Repository Linking - Link repositories to share indexes
 5. Co-occurrence Keywords - Intelligent keyword suggestions based on patterns
 6. REST API Server - HTTP access to all MCP tools with OpenAPI docs
-
-## AI Agents Integration
-1. [AI Agents Integration](AI_AGENTS.md) - Pre-built agents for specialized code exploration
-2. Cicada Code Explorer - Fast code discovery agent optimized with Haiku
-3. Agent Installation - One-command setup via `cicada agents install`
-4. Template System - Extensible agent templates with YAML configuration
-5. Workflow Optimization - Task-focused tools and best practices

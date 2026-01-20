@@ -353,7 +353,7 @@ The final index is stored as JSON with this structure:
     "total_modules": 100,
     "total_functions": 500,
     "repo_path": "/path/to/repo",
-    "cicada_version": "0.5.0"
+    "cicada_version": "0.6.0"
   },
   "cochange_metadata": {...},
   "cooccurrences": {...}

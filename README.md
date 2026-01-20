@@ -6,7 +6,7 @@
 
 ### **C**ode **I**ntelligence: **C**ontextual **A**nalysis, **D**iscovery, and **A**ttribution
 
-**Context compaction for AI code assistants** – Give your AI structured, token-efficient access to Elixir, Python, and Erlang codebases.
+**Context compaction for AI code assistants** – Give your AI structured, token-efficient access to 17+ languages including Elixir, Python, TypeScript, JavaScript, Rust, and more.
 
 > [**Up to 50% less waiting · Up to 70% less tokens · Up to 99% less explanations to do**](https://cicada-mcp.vercel.app/#benchmark-section)
 > **Tighter context = Better Quality**
@@ -18,8 +18,10 @@
 
 [![Elixir Support](https://img.shields.io/badge/Elixir-✓-blueviolet.svg)](https://elixir-lang.org/)
 [![Python Support](https://img.shields.io/badge/Python-✓-blue.svg)](https://www.python.org/)
-[![Erlang Support](https://img.shields.io/badge/Erlang-Beta-orange.svg)](https://www.erlang.org/)
-[![TypeScript Support](https://img.shields.io/badge/TypeScript-Experimental-lightgrey.svg)](https://www.typescriptlang.org/)
+[![TypeScript Support](https://img.shields.io/badge/TypeScript-✓-blue.svg)](https://www.typescriptlang.org/)
+[![JavaScript Support](https://img.shields.io/badge/JavaScript-✓-yellow.svg)](https://www.javascript.com/)
+[![Rust Support](https://img.shields.io/badge/Rust-✓-orange.svg)](https://www.rust-lang.org/)
+[![+12 More](https://img.shields.io/badge/Languages-17+_Total-green.svg)](#)
 
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en-US/install-mcp?name=cicada&config=eyJjb21tYW5kIjoidXZ4IGNpY2FkYS1tY3AgLiJ9)
 
@@ -47,11 +49,12 @@ Instead of raw text dumps, CICADA gives your AI **structured, pre-indexed knowle
 ### What You Get
 
 - **AST-level indexing** – Module/function/class definitions with signatures, specs, docs
-- **Complete call-site tracking** – Aliases, imports, dynamic references across Elixir and Python
-- **Semantic search** – Find code by concept, not just literal strings
+- **17+ language support** – Elixir, Python, TypeScript, JavaScript, Rust, Go, Java, Kotlin, Scala, C/C++, Ruby, C#, Visual Basic, Dart, PHP, Erlang (beta)
+- **Complete call-site tracking** – Aliases, imports, dynamic references across all supported languages
+- **Semantic search** – Find code by concept with keyword extraction or embeddings (Ollama integration)
 - **Git + PR attribution** – Surface *why* code exists, not just what
-- **Dead-code detection** – Safe refactors with dependency analysis
-- **Automatic language detection** – Works seamlessly with both Elixir and Python
+- **Dependency analysis** – Bidirectional tracking (what calls this, what does this call)
+- **Automatic language detection** – Works seamlessly across polyglot codebases
 
 ---
 
@@ -98,7 +101,7 @@ Uses your editor's built-in MCP management to install CICADA.
 - `cicada status` - Show index status, PR index, link status, agent files, MCP configs
 - `cicada stats [repo]` - Display usage statistics (tool calls, tokens, execution times)
 - `cicada watch` - Watch for file changes and automatically reindex
-- `cicada index` - Re-index code with custom options (`-f/--force` + --keywords/--embeddings, --watch)
+- `cicada index` - Re-index code with custom options (`-f/--force`, `--keywords`, `--embeddings`, `--watch`)
 - `cicada index-pr` - Index pull requests for PR attribution
 - `cicada run [tool]` - Execute any of the 7 MCP tools directly from CLI
 - `cicada agents install` - Install Claude Code agents to `./.claude/` directory
@@ -196,7 +199,8 @@ When watch mode is enabled:
 | `cicada status` | Check index health, link status, agent files | After setup, troubleshooting |
 | `cicada stats` | View usage statistics and token metrics | Monthly reviews, optimization |
 | `cicada watch` | Monitor files and auto-reindex on changes | During active development |
-| `cicada index --force --keywords .` | Full rebuild with keyword indexing | After large refactors or enabling keywords mode |
+| `cicada index --keywords .` | Rebuild with keyword indexing | After large refactors or enabling keywords mode |
+| `cicada index --embeddings .` | Rebuild with embeddings (semantic search) | When you want Ollama-powered semantic analysis |
 | `cicada index-pr .` | Sync PR metadata/reviews | After new PRs merge |
 
 ### Troubleshooting
@@ -449,17 +453,23 @@ All tools return structured Markdown/JSON snippets (signatures, call sites, PR m
 
 ### Current Status
 
-- ✅ **Elixir**
-- ✅ **Python**
-- 🚧 **Erlang** - Beta
-- 🧪 **TypeScript** - Experimental
+**Production Ready:**
+- ✅ Elixir (tree-sitter)
+- ✅ Python (SCIP)
+- ✅ TypeScript (SCIP)
+- ✅ JavaScript (SCIP)
+- ✅ Rust (SCIP)
 
-### What's Next
 
-- Stabilize Erlang support based on user feedback
-- TypeScript/JavaScript support via SCIP
-- Shared/team indexes for collaborative environments
-- Performance optimizations for large codebases
+**Beta:**
+- 🚧 Erlang (tree-sitter)
+- 🚧 Go (SCIP)
+- 🚧 Java/Kotlin/Scala (SCIP)
+- 🚧 C/C++ (SCIP)
+- 🚧 Ruby (SCIP)
+- 🚧 C#/Visual Basic (SCIP)
+- 🚧 Dart (SCIP)
+- 🚧 PHP (SCIP)
 
 ---
 

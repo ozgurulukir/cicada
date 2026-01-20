@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from cicada import __version__
 from cicada.mcp.config_manager import ConfigManager
 from cicada.mcp.router import create_tool_router
 
@@ -162,7 +163,7 @@ def create_app(config: dict) -> FastAPI:
     app = FastAPI(
         title="Cicada MCP REST API",
         description="REST API for Cicada MCP tools - code intelligence and search",
-        version="0.5.2",
+        version=__version__,
     )
 
     # Add CORS middleware
@@ -181,7 +182,7 @@ def create_app(config: dict) -> FastAPI:
     @app.get("/health", response_model=HealthResponse)
     async def health_check():
         """Health check endpoint."""
-        return {"status": "healthy", "version": "0.5.2"}
+        return {"status": "healthy", "version": __version__}
 
     # List all available tools
     @app.get("/api/tools", response_model=list[ToolInfo])
