@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-01-30
+
+### Changed
+
+- **Renamed `cicada-core` to `cicada-mcp-core`** (#231)
+  - Package name changed from `cicada-core` to `cicada-mcp-core` (PyPI name available)
+  - Import changed from `cicada_core` to `cicada_mcp_core`
+  - Updated all dependencies and workspace configuration
+  - Preserves lightweight dependency structure where `cicada-scip` only depends on `cicada-mcp-core`
+
+### Added
+
+- Linting and type checking to CI (#229)
+
 ## [0.6.0] - 2026-01-20
 
 ### Added
