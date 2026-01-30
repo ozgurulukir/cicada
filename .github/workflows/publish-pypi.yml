@@ -109,9 +109,24 @@ jobs:
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
         run: |
-          uv publish dist/cicada_mcp_core-* \
+          # Try to publish cicada-mcp-core
+          # Allow "already exists" error but fail on other errors
+          set +e
+          OUTPUT=$(uv publish dist/cicada_mcp_core-* \
             --publish-url https://test.pypi.org/legacy/ \
-            --token $UV_PUBLISH_TOKEN || echo "cicada-mcp-core may already exist on TestPyPI"
+            --token $UV_PUBLISH_TOKEN 2>&1)
+          EXIT_CODE=$?
+          set -e
+          
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✓ cicada-mcp-core published successfully to TestPyPI"
+          elif echo "$OUTPUT" | grep -qi "already exists\|FileExistsError\|400 Bad Request"; then
+            echo "⚠ cicada-mcp-core version already exists on TestPyPI (continuing...)"
+          else
+            echo "✗ Failed to publish cicada-mcp-core to TestPyPI:"
+            echo "$OUTPUT"
+            exit 1
+          fi
 
       # Wait for cicada-mcp-core to be available on TestPyPI
       - name: Wait for cicada-mcp-core availability
@@ -211,7 +226,22 @@ jobs:
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          uv publish dist/cicada_mcp_core-* --token $UV_PUBLISH_TOKEN || echo "cicada-mcp-core version may already exist on PyPI"
+          # Try to publish cicada-mcp-core
+          # Allow "already exists" error but fail on other errors
+          set +e
+          OUTPUT=$(uv publish dist/cicada_mcp_core-* --token $UV_PUBLISH_TOKEN 2>&1)
+          EXIT_CODE=$?
+          set -e
+          
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✓ cicada-mcp-core published successfully to PyPI"
+          elif echo "$OUTPUT" | grep -qi "already exists\|FileExistsError\|400 Bad Request"; then
+            echo "⚠ cicada-mcp-core version already exists on PyPI (continuing...)"
+          else
+            echo "✗ Failed to publish cicada-mcp-core to PyPI:"
+            echo "$OUTPUT"
+            exit 1
+          fi
 
       # Wait for cicada-mcp-core to be available on PyPI
       - name: Wait for cicada-mcp-core availability
@@ -309,7 +339,22 @@ jobs:
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          uv publish dist/cicada_mcp_core-* --token $UV_PUBLISH_TOKEN || echo "cicada-mcp-core version may already exist on PyPI"
+          # Try to publish cicada-mcp-core
+          # Allow "already exists" error but fail on other errors
+          set +e
+          OUTPUT=$(uv publish dist/cicada_mcp_core-* --token $UV_PUBLISH_TOKEN 2>&1)
+          EXIT_CODE=$?
+          set -e
+          
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✓ cicada-mcp-core published successfully to PyPI"
+          elif echo "$OUTPUT" | grep -qi "already exists\|FileExistsError\|400 Bad Request"; then
+            echo "⚠ cicada-mcp-core version already exists on PyPI (continuing...)"
+          else
+            echo "✗ Failed to publish cicada-mcp-core to PyPI:"
+            echo "$OUTPUT"
+            exit 1
+          fi
 
       # Wait for cicada-mcp-core to be available on PyPI
       - name: Wait for cicada-mcp-core availability
