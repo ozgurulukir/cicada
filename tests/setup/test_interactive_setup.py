@@ -156,10 +156,10 @@ class TestHandleMenuUnavailable:
         from cicada.interactive_setup import _handle_menu_unavailable
 
         with patch("cicada.interactive_setup._text_based_setup") as mock_text:
-            mock_text.return_value = ("keywords", False, False, None)
+            mock_text.return_value = ("keywords", False, False, None, False)
             result = _handle_menu_unavailable()
 
-        assert result == ("keywords", False, False, None)
+        assert result == ("keywords", False, False, None, False)
         captured = capsys.readouterr()
         assert "Terminal menu not supported" in captured.err
 
@@ -171,14 +171,17 @@ class TestInteractiveSetup:
         from cicada.interactive_setup import show_first_time_setup
 
         mock_ascii.return_value = "ASCII ART"
-        configure_menu(mock_menu_class, [0, 0, 1])
+        configure_menu(mock_menu_class, [0, 0, 1, 0])  # mode, pr, claude_md, storage
 
-        indexing_mode, index_prs, add_to_claude_md, embeddings_config = show_first_time_setup()
+        indexing_mode, index_prs, add_to_claude_md, embeddings_config, prefer_local = (
+            show_first_time_setup()
+        )
 
         assert indexing_mode == "keywords"
         assert index_prs is False
         assert add_to_claude_md is False
         assert embeddings_config is None
+        assert prefer_local is False
 
     @patch("cicada.interactive_setup._configure_embeddings")
     @patch("cicada.interactive_setup.generate_gradient_ascii_art")
@@ -193,9 +196,11 @@ class TestInteractiveSetup:
             "ollama_host": "http://localhost:11434",
             "model": "nomic-embed-text",
         }
-        configure_menu(mock_menu_class, [1, 1, 0])
+        configure_menu(mock_menu_class, [1, 1, 0, 1])  # mode, pr, claude_md, storage
 
-        indexing_mode, index_prs, add_to_claude_md, embeddings_config = show_first_time_setup()
+        indexing_mode, index_prs, add_to_claude_md, embeddings_config, prefer_local = (
+            show_first_time_setup()
+        )
 
         assert indexing_mode == "embeddings"
         assert index_prs is True
@@ -204,6 +209,7 @@ class TestInteractiveSetup:
             "ollama_host": "http://localhost:11434",
             "model": "nomic-embed-text",
         }
+        assert prefer_local is True
 
     @patch("cicada.interactive_setup.generate_gradient_ascii_art")
     @patch("cicada.interactive_setup.TerminalMenu")
@@ -225,13 +231,18 @@ class TestTextBasedSetup:
     def test_text_default_keywords_skip_pr(self):
         from cicada.interactive_setup import _text_based_setup
 
-        with patch("builtins.input", side_effect=["", "2", "2"]):
-            indexing_mode, index_prs, add_to_claude_md, embeddings_config = _text_based_setup()
+        with patch(
+            "builtins.input", side_effect=["", "2", "2", "1"]
+        ):  # mode, pr, claude_md, storage
+            indexing_mode, index_prs, add_to_claude_md, embeddings_config, prefer_local = (
+                _text_based_setup()
+            )
 
         assert indexing_mode == "keywords"
         assert index_prs is False
         assert add_to_claude_md is False
         assert embeddings_config is None
+        assert prefer_local is False
 
     @patch("cicada.interactive_setup._configure_embeddings")
     def test_text_embeddings_with_pr(self, mock_configure_embeddings):
@@ -242,8 +253,12 @@ class TestTextBasedSetup:
             "model": "nomic-embed-text",
         }
 
-        with patch("builtins.input", side_effect=["2", "1", "1"]):
-            indexing_mode, index_prs, add_to_claude_md, embeddings_config = _text_based_setup()
+        with patch(
+            "builtins.input", side_effect=["2", "1", "1", "2"]
+        ):  # mode, pr, claude_md, storage
+            indexing_mode, index_prs, add_to_claude_md, embeddings_config, prefer_local = (
+                _text_based_setup()
+            )
 
         assert indexing_mode == "embeddings"
         assert index_prs is True
@@ -252,13 +267,18 @@ class TestTextBasedSetup:
             "ollama_host": "http://localhost:11434",
             "model": "nomic-embed-text",
         }
+        assert prefer_local is True
 
     def test_text_invalid_mode_then_valid(self):
         """Tests that invalid input is rejected and retried."""
         from cicada.interactive_setup import _text_based_setup
 
-        with patch("builtins.input", side_effect=["invalid", "1", "2", "2"]):
-            indexing_mode, index_prs, add_to_claude_md, embeddings_config = _text_based_setup()
+        with patch(
+            "builtins.input", side_effect=["invalid", "1", "2", "2", "1"]
+        ):  # retry mode, pr, claude_md, storage
+            indexing_mode, index_prs, add_to_claude_md, embeddings_config, prefer_local = (
+                _text_based_setup()
+            )
 
         assert indexing_mode == "keywords"
 
@@ -266,8 +286,12 @@ class TestTextBasedSetup:
         """Tests that invalid PR choice is rejected and retried."""
         from cicada.interactive_setup import _text_based_setup
 
-        with patch("builtins.input", side_effect=["1", "invalid", "2", "2"]):
-            indexing_mode, index_prs, add_to_claude_md, embeddings_config = _text_based_setup()
+        with patch(
+            "builtins.input", side_effect=["1", "invalid", "2", "2", "1"]
+        ):  # mode, retry pr, claude_md, storage
+            indexing_mode, index_prs, add_to_claude_md, embeddings_config, prefer_local = (
+                _text_based_setup()
+            )
 
         assert index_prs is False
 
@@ -275,8 +299,12 @@ class TestTextBasedSetup:
         """Tests that invalid CLAUDE.md choice is rejected and retried."""
         from cicada.interactive_setup import _text_based_setup
 
-        with patch("builtins.input", side_effect=["1", "2", "invalid", "1"]):
-            indexing_mode, index_prs, add_to_claude_md, embeddings_config = _text_based_setup()
+        with patch(
+            "builtins.input", side_effect=["1", "2", "invalid", "1", "1"]
+        ):  # mode, pr, retry claude_md, storage
+            indexing_mode, index_prs, add_to_claude_md, embeddings_config, prefer_local = (
+                _text_based_setup()
+            )
 
         assert add_to_claude_md is True
 
@@ -561,9 +589,9 @@ class TestShowFirstTimeSetupDefaults:
         from cicada.interactive_setup import show_first_time_setup
 
         mock_ascii.return_value = "ASCII ART"
-        configure_menu(mock_menu_class, [0, 0])  # Only 2 selections: mode, claude_md
+        configure_menu(mock_menu_class, [0, 0, 0])  # Only 3 selections: mode, claude_md, storage
 
-        indexing_mode, index_prs, add_to_claude_md, _ = show_first_time_setup(
+        indexing_mode, index_prs, add_to_claude_md, _, prefer_local = show_first_time_setup(
             default_index_prs=True
         )
 
@@ -575,9 +603,9 @@ class TestShowFirstTimeSetupDefaults:
         from cicada.interactive_setup import show_first_time_setup
 
         mock_ascii.return_value = "ASCII ART"
-        configure_menu(mock_menu_class, [0, 0])  # Only 2 selections: mode, pr
+        configure_menu(mock_menu_class, [0, 0, 0])  # Only 3 selections: mode, pr, storage
 
-        indexing_mode, index_prs, add_to_claude_md, _ = show_first_time_setup(
+        indexing_mode, index_prs, add_to_claude_md, _, prefer_local = show_first_time_setup(
             default_add_to_claude=True
         )
 
@@ -588,10 +616,10 @@ class TestShowFirstTimeSetupDefaults:
         from cicada.interactive_setup import show_first_time_setup
 
         with patch("cicada.interactive_setup._text_based_setup") as mock_text:
-            mock_text.return_value = ("keywords", False, False, None)
+            mock_text.return_value = ("keywords", False, False, None, False)
             result = show_first_time_setup()
 
-        assert result == ("keywords", False, False, None)
+        assert result == ("keywords", False, False, None, False)
 
 
 class TestConfigureEmbeddings:

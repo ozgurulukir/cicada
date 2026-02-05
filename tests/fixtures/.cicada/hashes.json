@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "hashes": {
+    "sample.ex": "467c9d5d470e0d74520ee7531cf93bf2",
+    "sample_comments.ex": "0d521ffa49d738a7cb47a2b6835975a7",
+    "sample_strings.ex": "42eeead13ced31690437126210fbaeea",
+    "test_guard_clauses.ex": "5c49c535db6c6570c3a72085148d5858",
+    "test_module_with_alias.ex": "0bc361324c9ad85b3d198c7d237d5ad4",
+    "test_module_with_usage_categories.ex": "94875695334b4d266c017731c6c85e7a",
+    "test_project/lib/test_app/math.ex": "4a4c03edb1685c279ffb7697779be270",
+    "test_project/lib/test_app.ex": "36daaf1934ba90db03655f834739c5b6",
+    "test_project/mix.exs": "b865636686360641fa958b1938e6278d",
+    "test_with_calls.ex": "5987857085999c6aae655a6a25c908e5",
+    "test_with_docs.ex": "4118705f9325a3184366a3d698111334",
+    "test_with_tests.exs": "9409efccd0c5e7d8f88e6f68b0b60c3f"
+  },
+  "last_updated": "2026-01-27T22:01:59.882001Z"
+}

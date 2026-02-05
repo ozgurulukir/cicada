@@ -53,6 +53,12 @@ CLAUDE_MD_ITEMS = [
     "No - Skip CLAUDE.md setup",
 ]
 
+# Storage location options
+STORAGE_ITEMS = [
+    "Global - Store in ~/.cicada (default, private to this machine)",
+    "Local - Store in .cicada/ inside repo (portable, can be committed)",
+]
+
 
 def _generate_claude_docs() -> str:
     """
@@ -176,6 +182,21 @@ def display_editor_selection(editor: str) -> None:
     print()
 
 
+def display_storage_selection(prefer_local: bool) -> None:
+    """
+    Display confirmation message for storage location selection.
+
+    Args:
+        prefer_local: Whether to use local (.cicada/) storage
+    """
+    print()
+    if prefer_local:
+        print(f"{GREEN}✓{RESET} Using local storage (.cicada/ in repository)")
+    else:
+        print(f"{GREEN}✓{RESET} Using global storage (~/.cicada/)")
+    print()
+
+
 def get_existing_config(repo_path: Path) -> str | None:
     """
     Read existing configuration from the repository if it exists.
@@ -217,6 +238,7 @@ def run_setup(
     index_prs: bool = False,
     add_to_claude_md: bool = False,
     embeddings_config: dict[str, str] | None = None,
+    prefer_local: bool = False,
 ) -> None:
     """
     Run the setup.
@@ -229,6 +251,7 @@ def run_setup(
         index_prs: Whether to index PRs
         add_to_claude_md: Whether to add to CLAUDE.md
         embeddings_config: Optional embeddings configuration with 'ollama_host' and 'model'
+        prefer_local: Whether to store index in .cicada/ inside the repository
 
     Raises:
         Exception: If setup fails
@@ -243,6 +266,7 @@ def run_setup(
         index_prs=index_prs,
         add_to_claude_md=add_to_claude_md,
         embeddings_config=embeddings_config,
+        prefer_local=prefer_local,
     )
 
 

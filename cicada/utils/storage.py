@@ -40,9 +40,22 @@ def get_repo_hash(repo_path: str | Path) -> str:
     return hashlib.sha256(repo_path_str.encode()).hexdigest()[:16]
 
 
-def get_storage_dir(repo_path: str | Path) -> Path:
+def get_local_storage_dir(repo_path: str | Path) -> Path:
     """
-    Get the storage directory for a repository.
+    Get the local (in-repo) storage directory path.
+
+    Args:
+        repo_path: Path to the repository
+
+    Returns:
+        Path to the .cicada directory inside the repository
+    """
+    return Path(repo_path).resolve() / ".cicada"
+
+
+def get_global_storage_dir(repo_path: str | Path) -> Path:
+    """
+    Get the global storage directory for a repository.
 
     Storage structure:
         ~/.cicada/projects/<repo_hash>/
@@ -51,24 +64,104 @@ def get_storage_dir(repo_path: str | Path) -> Path:
         repo_path: Path to the repository
 
     Returns:
-        Path to the storage directory for this repository
+        Path to the global storage directory for this repository
     """
     repo_hash = get_repo_hash(repo_path)
-    storage_dir = Path.home() / ".cicada" / "projects" / repo_hash
-    return storage_dir
+    return Path.home() / ".cicada" / "projects" / repo_hash
 
 
-def create_storage_dir(repo_path: str | Path) -> Path:
+def has_local_storage(repo_path: str | Path) -> bool:
     """
-    Create the storage directory for a repository if it doesn't exist.
+    Check if a repository has local (in-repo) storage.
+
+    A repository has local storage if either:
+    - .cicada/index.json exists (has an index)
+    - .cicada/.local marker file exists (was created with --local flag)
 
     Args:
         repo_path: Path to the repository
 
     Returns:
+        True if local storage exists, False otherwise
+    """
+    local_dir = get_local_storage_dir(repo_path)
+    return (local_dir / "index.json").exists() or (local_dir / ".local").exists()
+
+
+def get_storage_dir(repo_path: str | Path, prefer_local: bool = False) -> Path:
+    """
+    Get the storage directory for a repository.
+
+    Priority order:
+    1. If local .cicada/index.json exists in repo, use local storage
+    2. If prefer_local is True, use local storage (for creating new local index)
+    3. Fall back to global storage (~/.cicada/projects/<repo_hash>/)
+
+    Args:
+        repo_path: Path to the repository
+        prefer_local: If True, prefer local storage even if it doesn't exist yet
+
+    Returns:
+        Path to the storage directory for this repository
+    """
+    # Use local storage if it already exists or if explicitly preferred
+    if has_local_storage(repo_path) or prefer_local:
+        return get_local_storage_dir(repo_path)
+
+    # Fall back to global storage
+    return get_global_storage_dir(repo_path)
+
+
+def create_storage_dir(repo_path: str | Path, prefer_local: bool = False) -> Path:
+    """
+    Create the storage directory for a repository if it doesn't exist.
+
+    When prefer_local is True and a global index exists, copies the index files
+    from global storage to local storage for a seamless migration.
+
+    Args:
+        repo_path: Path to the repository
+        prefer_local: If True, create local storage in .cicada/ directory
+
+    Returns:
         Path to the created storage directory
     """
-    storage_dir = get_storage_dir(repo_path)
+    import shutil
+
+    repo_path = Path(repo_path).resolve()
+
+    if prefer_local:
+        local_dir = get_local_storage_dir(repo_path)
+        local_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create marker file to indicate local storage preference
+        marker_file = local_dir / ".local"
+        if not marker_file.exists():
+            marker_file.touch()
+
+        # Copy existing global index to local if it exists and local is empty
+        global_dir = get_global_storage_dir(repo_path)
+        local_index = local_dir / "index.json"
+
+        if not local_index.exists() and (global_dir / "index.json").exists():
+            # Copy all relevant files from global to local
+            files_to_copy = [
+                "index.json",
+                "hashes.json",
+                "config.yaml",
+                "pr_index.json",
+                "vectors.jsonl",
+            ]
+            for filename in files_to_copy:
+                src = global_dir / filename
+                if src.exists():
+                    shutil.copy2(src, local_dir / filename)
+            print(f"Migrated existing index from {global_dir} to {local_dir}")
+
+        return local_dir
+
+    # Default: use global storage
+    storage_dir = get_storage_dir(repo_path, prefer_local=False)
     storage_dir.mkdir(parents=True, exist_ok=True)
     return storage_dir
 

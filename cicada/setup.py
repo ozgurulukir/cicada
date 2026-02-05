@@ -571,6 +571,7 @@ def setup(
     index_prs: bool = False,
     add_to_claude_md: bool = False,
     embeddings_config: dict[str, str] | None = None,
+    prefer_local: bool = False,
 ) -> None:
     """
     Run the complete setup for the specified editor.
@@ -583,6 +584,7 @@ def setup(
         index_prs: If True, index pull requests
         add_to_claude_md: If True, add Cicada guide to CLAUDE.md
         embeddings_config: Optional embeddings configuration with 'ollama_host' and 'model'
+        prefer_local: If True, store index in .cicada/ directory inside the repository
     """
     # Determine repository path
     if repo_path is None:
@@ -592,8 +594,11 @@ def setup(
     # Detect project language
     language = detect_project_language(repo_path)
 
-    # Create storage directory
-    storage_dir = create_storage_dir(repo_path)
+    # Create storage directory (with local preference if specified)
+    storage_dir = create_storage_dir(repo_path, prefer_local=prefer_local)
+
+    if prefer_local:
+        print(f"Using local storage: {storage_dir}")
     if indexing_mode is None:
         from cicada.index_mode import read_indexing_mode_config
 
