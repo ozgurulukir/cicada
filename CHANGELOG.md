@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-02-07
+
+### Changed
+
+- **Inlined `cicada-scip` into main package** - SCIP support is now built into `cicada-mcp` directly
+  - Eliminates `cicada-scip` and `cicada-mcp-core` workspace packages
+  - Fixes installation failures with `pip install cicada-mcp` and `uv tool install cicada-mcp`
+  - SCIP languages (Python, TypeScript, Go, Rust, Java, etc.) now work out of the box
+  - No more `--with cicada-scip` needed for installation
+  - Added `protobuf>=4.0.0` to main dependencies
+  - Simplified CI publish workflow (single package instead of three)
+
 ### Added
 
 - **Local `.cicada/` Storage Option** ([#227](https://github.com/wende/cicada/pull/227))
@@ -24,20 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Uses `.mcp.json` config file with `mcpServers` key
   - Updated INSTALLATION.md and README.md with Kimi setup instructions
 
-### Changed
-
-- **Improved SCIP Language Error Messages** ([#234](https://github.com/wende/cicada/pull/234))
-  - When `cicada-scip` is not installed, error now explains how to enable support
-  - Includes install instructions: `uv tool install cicada-mcp --with cicada-scip --force`
-  - Captures and surfaces actual `ImportError` diagnostic details
-  - Fixes [#232](https://github.com/wende/cicada/issues/232)
-
-- **README: Added Comparison to Alternatives** - New comparison table showing CICADA vs Serena vs Codicil across features like analysis method, git context, privacy, and resource usage
-
 ### Internal
 
-- Improved PyPI publish workflow to fail on real errors while allowing "already exists" ([794b2ef](https://github.com/wende/cicada/commit/794b2ef))
-- Added RELEASE.md documenting monorepo package publishing and cicada-mcp-core error handling
+- Removed `packages/` directory (cicada-scip, cicada-mcp-core, cicada-core)
+- Moved SCIP tests from `packages/cicada-scip/tests/` to `tests/languages/scip/`
+- Merged raw and wrapper SCIP indexers into single `GenericSCIPIndexer` class
 
 ## [0.6.1] - 2026-01-30
 

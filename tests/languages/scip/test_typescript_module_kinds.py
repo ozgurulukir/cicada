@@ -16,8 +16,8 @@ This is language-agnostic - works for any language that SCIP supports.
 import pytest
 from pathlib import Path
 
-from cicada_scip.reader import SCIPReader
-from cicada_scip.converter import SCIPConverter
+from cicada.languages.scip.reader import SCIPReader
+from cicada.languages.scip.converter import SCIPConverter
 
 
 @pytest.fixture
@@ -97,7 +97,7 @@ class TestSCIPKindMapping:
 
     def test_scip_class_kind(self):
         """SCIP Class kind (7) should map to 'class'."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         # SCIP Kind.Class = 7
@@ -105,7 +105,7 @@ class TestSCIPKindMapping:
 
     def test_scip_interface_kind(self):
         """SCIP Interface kind (21) should map to 'interface'."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         # SCIP Kind.Interface = 21
@@ -113,7 +113,7 @@ class TestSCIPKindMapping:
 
     def test_scip_type_alias_kind(self):
         """SCIP TypeAlias kind (55) should map to 'type_alias'."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         # SCIP Kind.TypeAlias = 55
@@ -121,7 +121,7 @@ class TestSCIPKindMapping:
 
     def test_scip_type_kind(self):
         """SCIP Type kind (54) should map to 'type_alias'."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         # SCIP Kind.Type = 54 (generic type definition)
@@ -129,7 +129,7 @@ class TestSCIPKindMapping:
 
     def test_scip_module_kind(self):
         """SCIP Module kind (29) should map to 'module'."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         # SCIP Kind.Module = 29
@@ -137,7 +137,7 @@ class TestSCIPKindMapping:
 
     def test_scip_struct_kind(self):
         """SCIP Struct kind (49) should map to 'struct'."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         # SCIP Kind.Struct = 49
@@ -145,7 +145,7 @@ class TestSCIPKindMapping:
 
     def test_scip_enum_kind(self):
         """SCIP Enum kind (11) should map to 'enum'."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         # SCIP Kind.Enum = 11
@@ -153,7 +153,7 @@ class TestSCIPKindMapping:
 
     def test_scip_trait_kind(self):
         """SCIP Trait kind (53) should map to 'trait'."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         # SCIP Kind.Trait = 53
@@ -161,7 +161,7 @@ class TestSCIPKindMapping:
 
     def test_scip_unspecified_kind(self):
         """SCIP UnspecifiedKind (0) should map to 'unknown'."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         # SCIP Kind.UnspecifiedKind = 0
@@ -169,7 +169,7 @@ class TestSCIPKindMapping:
 
     def test_unknown_kind_value(self):
         """Unknown SCIP kind values should map to 'unknown'."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         # Some unknown value
@@ -181,7 +181,7 @@ class TestModuledocFallback:
 
     def test_interface_from_moduledoc(self):
         """Interface detected from moduledoc code fence."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         moduledoc = "```ts\ninterface StoreApi\n```"
@@ -189,7 +189,7 @@ class TestModuledocFallback:
 
     def test_type_alias_from_moduledoc(self):
         """Type alias detected from moduledoc code fence."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         moduledoc = "```ts\ntype SetStateInternal\n```"
@@ -197,7 +197,7 @@ class TestModuledocFallback:
 
     def test_class_from_moduledoc(self):
         """Class detected from moduledoc code fence."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         moduledoc = "```ts\nclass Calculator\n```"
@@ -205,7 +205,7 @@ class TestModuledocFallback:
 
     def test_enum_from_moduledoc(self):
         """Enum detected from moduledoc code fence."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         moduledoc = "```ts\nenum Status\n```"
@@ -213,7 +213,7 @@ class TestModuledocFallback:
 
     def test_typescript_long_form(self):
         """TypeScript long form (```typescript) also works."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         moduledoc = "```typescript\ninterface Props\n```"
@@ -221,7 +221,7 @@ class TestModuledocFallback:
 
     def test_empty_moduledoc_returns_unknown(self):
         """Empty moduledoc returns unknown."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         assert converter._extract_module_kind_from_moduledoc("") == "unknown"
@@ -229,7 +229,7 @@ class TestModuledocFallback:
 
     def test_unrecognized_pattern_returns_unknown(self):
         """Unrecognized patterns return unknown."""
-        from cicada_scip.converter import SCIPConverter
+        from cicada.languages.scip.converter import SCIPConverter
 
         converter = SCIPConverter()
         moduledoc = "```ts\nfunction foo()\n```"

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from cicada_scip.indexer import GenericSCIPIndexer
+from cicada.languages.scip.indexer import GenericSCIPIndexer
 
 
 class TestGenericSCIPIndexer:

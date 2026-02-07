@@ -9,9 +9,9 @@ conventions (parentheses notation, not Elixir's /arity notation).
 
 import pytest
 
-from cicada_mcp_core import BaseLanguageFormatter
-from cicada_scip.reader import SCIPReader
-from cicada_scip.converter import SCIPConverter
+from cicada.languages.formatter_interface import BaseLanguageFormatter
+from cicada.languages.scip.reader import SCIPReader
+from cicada.languages.scip.converter import SCIPConverter
 
 # Skip tests requiring full cicada
 pytest.importorskip("cicada.format")
@@ -25,14 +25,14 @@ class TestTypeScriptFormatter:
     def test_typescript_formatter_exists(self):
         """Test that TypeScriptFormatter class can be imported."""
         # This will fail until we create TypeScriptFormatter
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         assert TypeScriptFormatter is not None
         assert issubclass(TypeScriptFormatter, BaseLanguageFormatter)
 
     def test_format_typescript_function(self):
         """Test formatting for TypeScript uses () notation, not /arity."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
         result = formatter.format_function_identifier("Container", "add", 1)
@@ -43,7 +43,7 @@ class TestTypeScriptFormatter:
 
     def test_format_zero_arity_typescript(self):
         """Test zero-arity function in TypeScript."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
         result = formatter.format_function_identifier("Calculator", "reset", 0)
@@ -53,7 +53,7 @@ class TestTypeScriptFormatter:
 
     def test_format_multiple_arity_typescript(self):
         """Test that TypeScript doesn't use arity in notation."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
 
@@ -69,7 +69,7 @@ class TestTypeScriptFormatter:
 
     def test_format_static_method(self):
         """Test formatting static methods."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
         result = formatter.format_function_identifier("Container", "getInstanceCount", 0)
@@ -78,7 +78,7 @@ class TestTypeScriptFormatter:
 
     def test_format_async_function(self):
         """Test formatting async functions (same as regular functions)."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
         result = formatter.format_function_identifier("AsyncHandler", "save", 2)
@@ -88,7 +88,7 @@ class TestTypeScriptFormatter:
 
     def test_format_arrow_function(self):
         """Test formatting arrow functions."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
         result = formatter.format_function_identifier("typescript_features", "arrowAdd", 2)
@@ -97,7 +97,7 @@ class TestTypeScriptFormatter:
 
     def test_format_constructor(self):
         """Test formatting class constructors."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
         result = formatter.format_function_identifier("Container", "constructor", 1)
@@ -106,7 +106,7 @@ class TestTypeScriptFormatter:
 
     def test_format_generic_function(self):
         """Test formatting generic functions (generics not in identifier)."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
         result = formatter.format_function_identifier("typescript_features", "mapItems", 2)
@@ -124,7 +124,7 @@ class TestFormatterRegistryTypeScript:
         formatter = get_language_formatter("typescript")
 
         # Should return TypeScriptFormatter, not ElixirFormatter
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         assert isinstance(formatter, TypeScriptFormatter)
 
@@ -301,13 +301,13 @@ class TestTypeScriptIndexFormatting:
 
         # Should get TypeScript formatter
         formatter = get_language_formatter(language)
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         assert isinstance(formatter, TypeScriptFormatter)
 
     def test_format_all_function_types(self, typescript_index):
         """Test formatting various TypeScript function types."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
 
@@ -326,7 +326,7 @@ class TestTypeScriptFormatterEdgeCases:
 
     def test_format_with_special_characters(self):
         """Test formatting function names with special characters."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
 
@@ -340,7 +340,7 @@ class TestTypeScriptFormatterEdgeCases:
 
     def test_format_with_long_names(self):
         """Test formatting very long function names."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
         long_name = "thisIsAVeryLongFunctionNameThatShouldStillWork"
@@ -350,7 +350,7 @@ class TestTypeScriptFormatterEdgeCases:
 
     def test_format_with_numbers(self):
         """Test formatting function names with numbers."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
         result = formatter.format_function_identifier("MyClass", "function2", 1)
@@ -359,7 +359,7 @@ class TestTypeScriptFormatterEdgeCases:
 
     def test_format_interface_method(self):
         """Test formatting interface methods (should work the same)."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
         result = formatter.format_function_identifier("DataProcessor", "process", 1)
@@ -368,7 +368,7 @@ class TestTypeScriptFormatterEdgeCases:
 
     def test_format_type_alias(self):
         """Test formatting type aliases (treated as modules/classes)."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
         # Type aliases don't have methods, but if they did...
@@ -382,7 +382,7 @@ class TestTypeScriptFormatterImplementationDetails:
 
     def test_implements_base_formatter_interface(self):
         """Test that TypeScriptFormatter implements BaseLanguageFormatter."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
 
@@ -392,7 +392,7 @@ class TestTypeScriptFormatterImplementationDetails:
 
     def test_method_signature_matches_interface(self):
         """Test that method signature matches the interface."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
         import inspect
 
         formatter = TypeScriptFormatter()
@@ -409,7 +409,7 @@ class TestTypeScriptFormatterImplementationDetails:
 
     def test_returns_string(self):
         """Test that format_function_identifier returns a string."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
         result = formatter.format_function_identifier("MyClass", "method", 2)
@@ -419,7 +419,7 @@ class TestTypeScriptFormatterImplementationDetails:
 
     def test_consistent_output_format(self):
         """Test that output format is consistent."""
-        from cicada_scip.formatter import TypeScriptFormatter
+        from cicada.languages.scip.formatter import TypeScriptFormatter
 
         formatter = TypeScriptFormatter()
 

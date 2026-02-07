@@ -38,12 +38,11 @@ dev:
 	@echo "4. Clearing Python bytecode cache..."
 	@find ~/.local/share/uv/tools/cicada-mcp -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	@find ~/.local/share/uv/tools/cicada-mcp -type f -name "*.pyc" -delete 2>/dev/null || true
-	@echo "5. Installing from fresh build (with cicada-scip)..."
-	@uv tool install --reinstall dist/cicada_mcp-*-py3-none-any.whl --with ./packages/cicada-scip
+	@echo "5. Installing from fresh build..."
+	@uv tool install --reinstall dist/cicada_mcp-*-py3-none-any.whl
 	@echo "cicada installed from fresh build"
 	@echo "  Commands: cicada, cicada-mcp, cicada-server"
 	@echo "  Installed from: $(PWD)/dist/"
-	@echo "  Includes: cicada-scip (SCIP language support)"
 
 # Install dependencies only
 install-deps:
@@ -55,10 +54,9 @@ install-deps:
 install: install-deps
 	@echo ""
 	@echo "Installing cicada tool to ~/.local/bin/..."
-	@uv tool install --editable . --force --with ./packages/cicada-scip
+	@uv tool install --editable . --force
 	@echo "cicada installed in editable mode"
 	@echo "  Command 'cicada' now uses code from $(PWD)"
-	@echo "  Includes: cicada-scip (SCIP language support)"
 
 
 uninstall: clean
@@ -66,13 +64,13 @@ uninstall: clean
 	@uv tool uninstall cicada-mcp 2>/dev/null || true
 	@echo "cicada uninstalled"
 
-# Generate SCIP protobuf files (in cicada-scip package, not main cicada)
+# Generate SCIP protobuf files
 generate-scip-proto:
-	@echo "Generating SCIP protobuf files in cicada-scip package..."
+	@echo "Generating SCIP protobuf files..."
 	@if command -v protoc >/dev/null 2>&1; then \
-		cd packages/cicada-scip/src/cicada_scip && protoc -I. --python_out=. --pyi_out=. scip.proto && echo "✓ SCIP protobuf files generated (via protoc)"; \
+		cd cicada/languages/scip && protoc -I. --python_out=. --pyi_out=. scip.proto && echo "✓ SCIP protobuf files generated (via protoc)"; \
 	else \
-		cd packages/cicada-scip/src/cicada_scip && uvx --from grpcio-tools python -m grpc_tools.protoc -I. --python_out=. --pyi_out=. scip.proto && echo "✓ SCIP protobuf files generated (via grpcio-tools)"; \
+		cd cicada/languages/scip && uvx --from grpcio-tools python -m grpc_tools.protoc -I. --python_out=. --pyi_out=. scip.proto && echo "✓ SCIP protobuf files generated (via grpcio-tools)"; \
 	fi
 
 # Setup test fixtures
@@ -244,7 +242,7 @@ clean:
 	@rm -rf venv   # legacy venv
 	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name "*.pyc" -delete
-	@rm -f packages/cicada-scip/src/cicada_scip/scip_pb2.py packages/cicada-scip/src/cicada_scip/scip_pb2.pyi
+	@rm -f cicada/languages/scip/scip_pb2.py cicada/languages/scip/scip_pb2.pyi
 	@echo "Cleaned up generated files"
 
 # Full reset: clean everything including cache, models, and cicada directories

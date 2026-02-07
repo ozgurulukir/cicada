@@ -4,13 +4,13 @@ on:
   push:
     branches: [ main, dev ]
     paths:
-      - 'packages/cicada-scip/**'
+      - 'cicada/languages/scip/**'
       - 'tests/fixtures/sample_*/**'
       - 'tests/docker/**'
   pull_request:
     branches: [ main, dev ]
     paths:
-      - 'packages/cicada-scip/**'
+      - 'cicada/languages/scip/**'
       - 'tests/fixtures/sample_*/**'
       - 'tests/docker/**'
   workflow_dispatch:
@@ -40,7 +40,7 @@ jobs:
           echo "$CHANGED_FILES"
 
           # Check if SCIP core code changed (run all languages)
-          if echo "$CHANGED_FILES" | grep -qE '^packages/cicada-scip/|^tests/docker/'; then
+          if echo "$CHANGED_FILES" | grep -qE '^cicada/languages/scip/|^tests/docker/'; then
             echo "SCIP core code changed - testing all languages"
             echo 'languages=["go", "java", "scala", "ruby", "dart", "c", "cpp", "csharp", "vb", "python", "typescript", "javascript", "rust"]' >> $GITHUB_OUTPUT
           else
@@ -130,11 +130,11 @@ jobs:
 
       - name: Generate SCIP protobuf files
         run: |
-          cd packages/cicada-scip/src/cicada_scip
+          cd cicada/languages/scip
           protoc --python_out=. --pyi_out=. scip.proto
 
-      - name: Install Cicada with SCIP support
-        run: uv sync --extra scip
+      - name: Install Cicada
+        run: uv sync --dev
 
       # Language-specific indexer installation
       - name: Install Go indexer

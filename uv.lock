@@ -7,13 +7,6 @@ resolution-markers = [
     "python_full_version < '3.11'",
 ]
 
-[manifest]
-members = [
-    "cicada-mcp",
-    "cicada-mcp-core",
-    "cicada-scip",
-]
-
 [[package]]
 name = "annotated-doc"
 version = "0.0.4"
@@ -290,7 +283,7 @@ wheels = [
 
 [[package]]
 name = "cicada-mcp"
-version = "0.6.1"
+version = "0.6.3"
 source = { editable = "." }
 dependencies = [
     { name = "cicada-vector" },
@@ -300,6 +293,7 @@ dependencies = [
     { name = "lemminflect" },
     { name = "mcp" },
     { name = "pathspec" },
+    { name = "protobuf" },
     { name = "pyyaml" },
     { name = "simple-term-menu" },
     { name = "tiktoken" },
@@ -313,26 +307,20 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
-    { name = "cicada-scip" },
     { name = "gensim" },
     { name = "keybert" },
 ]
 dev = [
-    { name = "cicada-scip" },
     { name = "pytest" },
 ]
 ml = [
     { name = "gensim" },
     { name = "keybert" },
 ]
-scip = [
-    { name = "cicada-scip" },
-]
 
 [package.dev-dependencies]
 dev = [
     { name = "black" },
-    { name = "cicada-scip" },
     { name = "pyrefly" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -345,9 +333,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cicada-scip", marker = "extra == 'all'", editable = "packages/cicada-scip" },
-    { name = "cicada-scip", marker = "extra == 'dev'", editable = "packages/cicada-scip" },
-    { name = "cicada-scip", marker = "extra == 'scip'", editable = "packages/cicada-scip" },
     { name = "cicada-vector", git = "https://github.com/wende/cicada-vector" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "gensim", marker = "extra == 'all'", specifier = ">=4.4.0" },
@@ -359,6 +344,7 @@ requires-dist = [
     { name = "lemminflect", specifier = ">=0.2.3" },
     { name = "mcp", specifier = ">=0.1.0" },
     { name = "pathspec", specifier = ">=0.12.0" },
+    { name = "protobuf", specifier = ">=4.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "simple-term-menu", specifier = ">=1.6.0" },
@@ -370,12 +356,11 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.32.0" },
     { name = "watchdog", specifier = ">=3.0.0" },
 ]
-provides-extras = ["scip", "ml", "all", "dev"]
+provides-extras = ["ml", "all", "dev"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "black", specifier = ">=24.0.0" },
-    { name = "cicada-scip", editable = "packages/cicada-scip" },
     { name = "pyrefly", specifier = ">=0.39.1" },
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "pytest-asyncio", specifier = ">=1.2.0" },
@@ -385,48 +370,6 @@ dev = [
     { name = "ruff", specifier = ">=0.14.2" },
     { name = "vulture", specifier = ">=2.14" },
 ]
-
-[[package]]
-name = "cicada-mcp-core"
-version = "0.1.0"
-source = { editable = "packages/cicada-mcp-core" }
-
-[package.optional-dependencies]
-dev = [
-    { name = "pytest" },
-]
-yaml = [
-    { name = "pyyaml" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "pyyaml", marker = "extra == 'yaml'", specifier = ">=6.0" },
-]
-provides-extras = ["yaml", "dev"]
-
-[[package]]
-name = "cicada-scip"
-version = "0.1.0"
-source = { editable = "packages/cicada-scip" }
-dependencies = [
-    { name = "cicada-mcp-core" },
-    { name = "protobuf" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "cicada-mcp-core", editable = "packages/cicada-mcp-core" },
-    { name = "protobuf", specifier = ">=4.0.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-]
-provides-extras = ["dev"]
 
 [[package]]
 name = "cicada-vector"

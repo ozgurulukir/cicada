@@ -5,8 +5,8 @@
 
 import pytest
 
-from cicada_scip import scip_pb2
-from cicada_scip.reader import SCIPReader
+from cicada.languages.scip import scip_pb2
+from cicada.languages.scip.reader import SCIPReader
 
 
 class TestSCIPReader:

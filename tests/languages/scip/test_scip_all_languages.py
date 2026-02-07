@@ -22,8 +22,8 @@ import pytest
 from pathlib import Path
 from typing import Optional
 
-from cicada_scip.reader import SCIPReader
-from cicada_scip.converter import SCIPConverter
+from cicada.languages.scip.reader import SCIPReader
+from cicada.languages.scip.converter import SCIPConverter
 
 # Skip this module if full cicada is not installed
 pytest.importorskip("cicada.languages")

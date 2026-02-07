@@ -5,8 +5,8 @@
 
 import pytest
 
-from cicada_scip.reader import SCIPReader
-from cicada_scip.converter import SCIPConverter
+from cicada.languages.scip.reader import SCIPReader
+from cicada.languages.scip.converter import SCIPConverter
 
 # Skip this module if full cicada is not installed
 pytest.importorskip("cicada.extractors")
@@ -490,7 +490,7 @@ class TestDocstringDerivedArity:
 
         # Patch the methods we need
         with patch.object(converter, "_extract_document_data") as mock_extract:
-            from cicada_scip.converter import DocumentData, SymbolData
+            from cicada.languages.scip.converter import DocumentData, SymbolData
 
             # Create symbol data with arity=0 (no parameter occurrences)
             symbol_data = SymbolData(
@@ -565,7 +565,7 @@ class TestDocstringDerivedArity:
         mock_index.documents = [mock_doc]
 
         with patch.object(converter, "_extract_document_data") as mock_extract:
-            from cicada_scip.converter import DocumentData, SymbolData
+            from cicada.languages.scip.converter import DocumentData, SymbolData
 
             # Symbol has arity=2 from parameter occurrences
             symbol_data = SymbolData(

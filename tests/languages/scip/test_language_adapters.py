@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from cicada_scip.language_adapters import get_language_adapter
+from cicada.languages.scip.language_adapters import get_language_adapter
 
 
 class TestAdapterRegistry:

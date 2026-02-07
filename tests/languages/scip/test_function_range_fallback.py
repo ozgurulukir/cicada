@@ -9,7 +9,7 @@ get proper upper bounds based on subsequent functions.
 """
 
 import pytest
-from cicada_scip.converter import SCIPConverter, DocumentData, SymbolData, CallSite
+from cicada.languages.scip.converter import SCIPConverter, DocumentData, SymbolData, CallSite
 
 
 class TestFunctionRangeFallback:

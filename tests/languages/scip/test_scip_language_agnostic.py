@@ -13,8 +13,8 @@ that works identically for ALL SCIP-compatible languages.
 
 import pytest
 
-from cicada_scip.reader import SCIPReader
-from cicada_scip.converter import SCIPConverter
+from cicada.languages.scip.reader import SCIPReader
+from cicada.languages.scip.converter import SCIPConverter
 
 
 @pytest.fixture

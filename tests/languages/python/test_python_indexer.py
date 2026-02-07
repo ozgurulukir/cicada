@@ -140,7 +140,7 @@ class TestPythonSCIPIndexer:
         with patch.object(
             SCIPPythonInstaller, "get_scip_python_path", return_value=fake_scip_python_path
         ):
-            with patch("cicada_scip.indexer.subprocess.run") as mock_run:
+            with patch("cicada.languages.scip.indexer.subprocess.run") as mock_run:
                 # Mock successful subprocess run
                 mock_result = Mock()
                 mock_result.returncode = 0

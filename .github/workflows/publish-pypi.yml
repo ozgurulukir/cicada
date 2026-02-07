@@ -51,14 +51,13 @@ jobs:
 
       - name: Generate SCIP protobuf files
         run: |
-          cd packages/cicada-scip/src/cicada_scip
+          cd cicada/languages/scip
           protoc --python_out=. --pyi_out=. scip.proto
           ls -la scip_pb2.py scip_pb2.pyi
 
       - name: Install dependencies
         run: |
-          # Install with scip extra to ensure workspace packages are built
-          uv sync --extra scip --extra dev
+          uv sync --dev
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -100,46 +99,6 @@ jobs:
               f.write(f'GIT_TAG = \"{tag}\"\nGIT_COMMIT_HASH = \"{commit}\"\n')
           "
           cat cicada/_version_hash.py
-
-      # Build and publish cicada-mcp-core first (cicada-mcp depends on it)
-      - name: Build cicada-mcp-core
-        run: uv build --package cicada-mcp-core
-
-      - name: Publish cicada-mcp-core to TestPyPI
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
-        run: |
-          # Try to publish cicada-mcp-core
-          # Allow "already exists" error but fail on other errors
-          set +e
-          OUTPUT=$(uv publish dist/cicada_mcp_core-* \
-            --publish-url https://test.pypi.org/legacy/ \
-            --token $UV_PUBLISH_TOKEN 2>&1)
-          EXIT_CODE=$?
-          set -e
-          
-          if [ $EXIT_CODE -eq 0 ]; then
-            echo "✓ cicada-mcp-core published successfully to TestPyPI"
-          elif echo "$OUTPUT" | grep -qi "already exists\|FileExistsError\|400 Bad Request"; then
-            echo "⚠ cicada-mcp-core version already exists on TestPyPI (continuing...)"
-          else
-            echo "✗ Failed to publish cicada-mcp-core to TestPyPI:"
-            echo "$OUTPUT"
-            exit 1
-          fi
-
-      # Wait for cicada-mcp-core to be available on TestPyPI
-      - name: Wait for cicada-mcp-core availability
-        run: |
-          echo "Waiting for cicada-mcp-core to be available on TestPyPI..."
-          for i in {1..12}; do
-            if pip index versions cicada-mcp-core --index-url https://test.pypi.org/simple/ 2>/dev/null; then
-              echo "cicada-mcp-core is available!"
-              break
-            fi
-            echo "Attempt $i/12: Not yet available, waiting 10s..."
-            sleep 10
-          done
 
       # Build and publish cicada-mcp
       - name: Build cicada-mcp
@@ -207,6 +166,17 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Install protobuf compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Generate SCIP protobuf files
+        run: |
+          cd cicada/languages/scip
+          protoc --python_out=. --pyi_out=. scip.proto
+          ls -la scip_pb2.py scip_pb2.pyi
+
       - name: Generate version hash file
         run: |
           python -c "
@@ -217,44 +187,6 @@ jobs:
               f.write(f'GIT_TAG = \"{tag}\"\nGIT_COMMIT_HASH = \"{commit}\"\n')
           "
           cat cicada/_version_hash.py
-
-      # Build and publish cicada-mcp-core first (cicada-mcp depends on it)
-      - name: Build cicada-mcp-core
-        run: uv build --package cicada-mcp-core
-
-      - name: Publish cicada-mcp-core to PyPI
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          # Try to publish cicada-mcp-core
-          # Allow "already exists" error but fail on other errors
-          set +e
-          OUTPUT=$(uv publish dist/cicada_mcp_core-* --token $UV_PUBLISH_TOKEN 2>&1)
-          EXIT_CODE=$?
-          set -e
-          
-          if [ $EXIT_CODE -eq 0 ]; then
-            echo "✓ cicada-mcp-core published successfully to PyPI"
-          elif echo "$OUTPUT" | grep -qi "already exists\|FileExistsError\|400 Bad Request"; then
-            echo "⚠ cicada-mcp-core version already exists on PyPI (continuing...)"
-          else
-            echo "✗ Failed to publish cicada-mcp-core to PyPI:"
-            echo "$OUTPUT"
-            exit 1
-          fi
-
-      # Wait for cicada-mcp-core to be available on PyPI
-      - name: Wait for cicada-mcp-core availability
-        run: |
-          echo "Waiting for cicada-mcp-core to be available on PyPI..."
-          for i in {1..12}; do
-            if pip index versions cicada-mcp-core 2>/dev/null; then
-              echo "cicada-mcp-core is available!"
-              break
-            fi
-            echo "Attempt $i/12: Not yet available, waiting 10s..."
-            sleep 10
-          done
 
       # Build and publish cicada-mcp
       - name: Build cicada-mcp
@@ -320,6 +252,17 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Install protobuf compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Generate SCIP protobuf files
+        run: |
+          cd cicada/languages/scip
+          protoc --python_out=. --pyi_out=. scip.proto
+          ls -la scip_pb2.py scip_pb2.pyi
+
       - name: Generate version hash file
         run: |
           python -c "
@@ -330,44 +273,6 @@ jobs:
               f.write(f'GIT_TAG = \"{tag}\"\nGIT_COMMIT_HASH = \"{commit}\"\n')
           "
           cat cicada/_version_hash.py
-
-      # Build and publish cicada-mcp-core first (cicada-mcp depends on it)
-      - name: Build cicada-mcp-core
-        run: uv build --package cicada-mcp-core
-
-      - name: Publish cicada-mcp-core to PyPI
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          # Try to publish cicada-mcp-core
-          # Allow "already exists" error but fail on other errors
-          set +e
-          OUTPUT=$(uv publish dist/cicada_mcp_core-* --token $UV_PUBLISH_TOKEN 2>&1)
-          EXIT_CODE=$?
-          set -e
-          
-          if [ $EXIT_CODE -eq 0 ]; then
-            echo "✓ cicada-mcp-core published successfully to PyPI"
-          elif echo "$OUTPUT" | grep -qi "already exists\|FileExistsError\|400 Bad Request"; then
-            echo "⚠ cicada-mcp-core version already exists on PyPI (continuing...)"
-          else
-            echo "✗ Failed to publish cicada-mcp-core to PyPI:"
-            echo "$OUTPUT"
-            exit 1
-          fi
-
-      # Wait for cicada-mcp-core to be available on PyPI
-      - name: Wait for cicada-mcp-core availability
-        run: |
-          echo "Waiting for cicada-mcp-core to be available on PyPI..."
-          for i in {1..12}; do
-            if pip index versions cicada-mcp-core 2>/dev/null; then
-              echo "cicada-mcp-core is available!"
-              break
-            fi
-            echo "Attempt $i/12: Not yet available, waiting 10s..."
-            sleep 10
-          done
 
       # Build and publish cicada-mcp
       - name: Build cicada-mcp

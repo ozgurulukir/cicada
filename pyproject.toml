@@ -2,18 +2,12 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# Workspace configuration for monorepo
-[tool.uv.workspace]
-members = ["packages/cicada-mcp-core", "packages/cicada-scip"]
-
 [tool.uv.sources]
-cicada-mcp-core = { workspace = true }
-cicada-scip = { workspace = true }
 cicada-vector = { git = "https://github.com/wende/cicada-vector" }
 
 [project]
 name = "cicada-mcp"
-version = "0.6.1"
+version = "0.6.3"
 description = "An Elixir and Python code intelligence MCP server"
 readme = "README.md"
 license = "MIT"
@@ -51,7 +45,6 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    # cicada-scip is optional - see [project.optional-dependencies]
     "mcp>=0.1.0",
     "pyyaml>=6.0",
     "tree-sitter>=0.20.0",
@@ -68,23 +61,19 @@ dependencies = [
     "cicada-vector",  # Semantic search with embeddings
     "fastapi>=0.115.0",  # REST API server for MCP tools
     "uvicorn>=0.32.0",  # ASGI server for FastAPI
+    "protobuf>=4.0.0",  # SCIP protocol buffer support
 ]
 
 [project.optional-dependencies]
-scip = [
-    "cicada-scip>=0.1.0",  # SCIP-based language indexing (Python, TypeScript, Go, Rust, etc.)
-]
 ml = [
     "keybert>=0.8.0",  # Required for BERT keyword extraction (--max tier)
     "gensim>=4.4.0",   # Required for GloVe/FastText keyword expansion (--regular and --max tiers)
 ]
 all = [
-    "cicada-scip>=0.1.0",
     "keybert>=0.8.0",
     "gensim>=4.4.0",
 ]
 dev = [
-    "cicada-scip>=0.1.0",  # Needed for running full test suite
     "pytest>=8.0",
 ]
 
@@ -112,8 +101,6 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 timeout = 5
 testpaths = ["tests"]
-# Ignore package tests - they run independently
-ignore = ["packages"]
 filterwarnings = [
     "ignore:Importing 'parser.split_arg_string' is deprecated.*:DeprecationWarning",
     "ignore:coroutine 'async_main' was never awaited:RuntimeWarning",
@@ -220,7 +207,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["T201", "T203"]  # Allow print in tests
 "cicada/languages/__init__.py" = ["E402"]  # Conditional import after language registration
-"cicada/languages/scip/*.py" = ["I001"]  # Import order in re-export files
+"cicada/languages/scip/*.py" = ["I001"]  # Import order in SCIP modules
 
 [tool.pyright]
 exclude = [
@@ -230,7 +217,6 @@ exclude = [
 
 [dependency-groups]
 dev = [
-    "cicada-scip",  # SCIP package for full test coverage
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
     "pytest-cov>=7.0.0",

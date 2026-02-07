@@ -11,8 +11,8 @@ extraction, and multi-file project handling.
 import pytest
 from pathlib import Path
 
-from cicada_scip.reader import SCIPReader
-from cicada_scip.converter import SCIPConverter
+from cicada.languages.scip.reader import SCIPReader
+from cicada.languages.scip.converter import SCIPConverter
 
 # Skip this module if full cicada is not installed
 pytest.importorskip("cicada.extractors")
