@@ -16,8 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixes installation failures with `pip install cicada-mcp` and `uv tool install cicada-mcp`
   - SCIP languages (Python, TypeScript, Go, Rust, Java, etc.) now work out of the box
   - No more `--with cicada-scip` needed for installation
-  - Added `protobuf>=4.0.0` to main dependencies
+  - Added `protobuf>=5.26.0` to main dependencies
   - Simplified CI publish workflow (single package instead of three)
+
+- **Improved SCIP Language Error Messages** ([#234](https://github.com/wende/cicada/pull/234))
+  - When `cicada-scip` is not installed, error now explains how to enable support
+  - Includes install instructions: `uv tool install cicada-mcp --with cicada-scip --force`
+  - Captures and surfaces actual `ImportError` diagnostic details
+  - Fixes [#232](https://github.com/wende/cicada/issues/232)
+
+- **README: Added Comparison to Alternatives** - New comparison table showing CICADA vs Serena vs Codicil across features like analysis method, git context, privacy, and resource usage
 
 ### Added
 
@@ -41,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed `packages/` directory (cicada-scip, cicada-mcp-core, cicada-core)
 - Moved SCIP tests from `packages/cicada-scip/tests/` to `tests/languages/scip/`
 - Merged raw and wrapper SCIP indexers into single `GenericSCIPIndexer` class
+- Improved PyPI publish workflow to fail on real errors while allowing "already exists" ([794b2ef](https://github.com/wende/cicada/commit/794b2ef))
+- Added RELEASE.md documenting monorepo package publishing and cicada-mcp-core error handling
 
 ## [0.6.1] - 2026-01-30
 
