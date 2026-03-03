@@ -7,7 +7,8 @@ with support for wildcard pattern matching and module name boosting.
 
 import math
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Mapping
+from itertools import groupby
 from typing import Any
 
 # Normalization constants for score distribution
@@ -37,6 +38,42 @@ COVERAGE_BONUS_SCALE = 0.8
 # This is a high score awarded when a query keyword exactly matches the function/module name
 # (e.g., searching for "__init__" matches the __init__ function)
 EXACT_NAME_MATCH_SCORE = 3.0
+
+
+def build_zipf_table(documents: Iterable[Mapping[str, Any]]) -> dict[str, float]:
+    """
+    Build a Zipf weighting table from document keyword frequencies.
+
+    Rare keywords (appearing in fewer documents) get higher weight.
+    Uses dense ranking with ex aequo (equal frequencies share the same rank).
+    Weight follows power law: 1.0 / rank.
+
+    Args:
+        documents: Iterable of document-like mappings, each with a 'keywords' dict
+
+    Returns:
+        Dictionary mapping keyword -> Zipf weight (1.0 for rarest, decreasing)
+    """
+    # Count document frequency (each keyword counted once per document)
+    doc_freq: defaultdict[str, int] = defaultdict(int)
+    for doc in documents:
+        for kw in set(doc.get("keywords", {}).keys()):
+            doc_freq[kw] += 1
+
+    if not doc_freq:
+        return {}
+
+    # Sort by frequency ascending (rarest first)
+    sorted_items = sorted(doc_freq.items(), key=lambda x: x[1])
+
+    # Dense ranking with ex aequo: increment rank only when frequency changes
+    zipf_weights: dict[str, float] = {}
+    for rank, (_, group) in enumerate(groupby(sorted_items, key=lambda x: x[1]), start=1):
+        weight = 1.0 / rank
+        for kw, _ in group:
+            zipf_weights[kw] = weight
+
+    return zipf_weights
 
 
 def _extract_simple_name(doc_name: str | None) -> str | None:
@@ -123,6 +160,7 @@ def calculate_score(
     total_terms: int,
     doc_keywords: dict[str, float],
     doc_name: str | None = None,
+    zipf_weights: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     """
     Calculate search score with hybrid scoring (diminishing returns + coverage bonus).
@@ -173,7 +211,8 @@ def calculate_score(
             # Apply diminishing returns: weight × 0.5^(match_count - 1)
             match_count = keyword_match_counts[query_kw]
             diminishing_factor = DIMINISHING_RETURNS_FACTOR**match_count
-            base_score += doc_keywords[query_kw] * diminishing_factor
+            zipf_factor = zipf_weights.get(query_kw, 1.0) if zipf_weights else 1.0
+            base_score += doc_keywords[query_kw] * diminishing_factor * zipf_factor
 
             # Increment match count for this keyword
             keyword_match_counts[query_kw] += 1
@@ -203,6 +242,7 @@ def calculate_wildcard_score(
     doc_keywords: dict[str, float],
     match_wildcard_fn: Callable[[str, str], bool],
     doc_name: str | None = None,
+    zipf_weights: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     """
     Calculate search score using wildcard pattern matching with hybrid scoring.
@@ -238,26 +278,29 @@ def calculate_wildcard_score(
     simple_name = _extract_simple_name(doc_name)
 
     for query_kw, group_idx in zip(query_keywords, keyword_groups, strict=False):
-        matched = False
+        best_match_score: float | None = None
+        best_diminished_score: float | None = None
 
-        # Find all doc keywords matching this pattern
+        # Find best matching doc keyword for this pattern (order-independent)
+        match_count = keyword_match_counts[query_kw]
+        diminishing_factor = DIMINISHING_RETURNS_FACTOR**match_count
         for doc_kw, weight in doc_keywords.items():
             if match_wildcard_fn(query_kw, doc_kw):
-                matched_groups.add(group_idx)
-                # Add query keyword to matched list (not the doc keyword)
-                if query_kw not in matched_keywords:
-                    matched_keywords.append(query_kw)
+                zipf_factor = zipf_weights.get(doc_kw, 1.0) if zipf_weights else 1.0
+                weighted_score = weight * zipf_factor
+                if best_match_score is None or weighted_score > best_match_score:
+                    best_match_score = weighted_score
+                    best_diminished_score = weighted_score * diminishing_factor
 
-                # Apply diminishing returns: weight × 0.5^match_count
-                match_count = keyword_match_counts[query_kw]
-                diminishing_factor = DIMINISHING_RETURNS_FACTOR**match_count
-                base_score += weight * diminishing_factor
-
-                # Increment match count
-                keyword_match_counts[query_kw] += 1
-
-                matched = True
-                break
+        matched = best_diminished_score is not None
+        if matched:
+            matched_groups.add(group_idx)
+            # Add query keyword to matched list (not the doc keyword)
+            if query_kw not in matched_keywords:
+                matched_keywords.append(query_kw)
+            base_score += best_diminished_score
+            # Increment match count
+            keyword_match_counts[query_kw] += 1
 
         # Also check for wildcard name match
         if not matched and simple_name and match_wildcard_fn(query_kw, simple_name):
