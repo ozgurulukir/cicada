@@ -1,6 +1,6 @@
 # Architecture
 
-High-level overview of Cicada's project structure and design.
+igh-level overview of Cicada's project structure and design.
 
 ## Project Structure
 
